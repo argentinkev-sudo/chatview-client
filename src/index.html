@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatApp</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-box">
+    <div class="logo">💬ChatApp</div>
+    <div class="tabs">
+      <button class="tab act" id="tab-login" onclick="switchTab('login')">Connexion</button>
+      <button class="tab" id="tab-register" onclick="switchTab('register')">Inscription</button>
+    </div>
+    <input id="auth-username" type="text" placeholder="Pseudo" maxlength="20" />
+    <input id="auth-password" type="password" placeholder="Mot de passe" />
+    <p id="auth-error" class="error"></p>
+    <button id="auth-submit">Se connecter</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="app hidden">
+  <div class="sidebar-icons">
+    <div class="server-icon active">💭</div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-header">ChatView</div>
+    <div class="channels-scroll">
+      <div class="channel-group-title">SALONS TEXTUELS</div>
+      <div id="text-channels"></div>
+      <div class="channel-group-title" style="margin-top:12px">SALONS VOCAUX</div>
+      <div id="voice-channels"></div>
+    </div>
+    <div class="user-bar">
+      <div class="user-avatar" id="my-avatar"></div>
+      <button class="avatar-change-btn" id="change-avatar-btn" title="Changer l'avatar">📷</button>
+      <input type="file" id="avatar-input" accept="image/*" style="display: none;">
+      <div class="user-info">
+        <div class="user-name" id="my-username"></div>
+        <div class="user-status">🟢 En ligne</div>
+      </div>
+      <button class="icon-btn" id="logout-btn" title="Déconnexion">⏻</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="main-header">
+      <span id="channel-name">Sélectionne un salon</span>
+      <button class="icon-btn" id="members-btn">👥</button>
+    </div>
+    <div id="messages-area" class="messages-area"></div>
+    <div id="voice-bar" class="voice-bar hidden">
+      <div class="voice-bar-info">
+        <span id="voice-bar-name"></span>
+        <span id="voice-bar-users"></span>
+      </div>
+      <div class="voice-bar-controls">
+        <button class="voice-btn" id="mute-btn">🎙️</button>
+        <button class="voice-btn" id="deafen-btn">🔊</button>
+        <button class="voice-btn" id="screen-btn">🖥️</button>
+        <button class="voice-btn danger" id="leave-voice-btn">📵 Quitter</button>
+      </div>
+    </div>
+    <div id="input-area" class="input-area hidden">
+  <button class="attach-btn" id="emoji-btn">😊</button>
+  <label class="attach-btn" for="file-input">➕</label>
+  <input type="file" id="file-input" style="display:none" />
+  <input id="msg-input" type="text" placeholder="Envoyer un message..." />
+  <button id="send-btn">➤</button>
+</div>
+
+<!-- Emoji/GIF Picker -->
+<div id="emoji-picker" class="emoji-picker hidden">
+  <div class="emoji-tabs">
+    <button class="emoji-tab active" data-tab="emoji">😊 Émojis</button>
+    <button class="emoji-tab" data-tab="gif">🎬 GIFs</button>
+  </div>
+  
+  <div id="emoji-content" class="emoji-content">
+    <div class="emoji-grid" id="emoji-grid"></div>
+  </div>
+  
+  <div id="gif-content" class="emoji-content hidden">
+    <input type="text" id="gif-search" class="gif-search" placeholder="Rechercher un GIF..." />
+    <div class="gif-grid" id="gif-grid"></div>
+  </div>
+</div>
+  </div>
+
+  <div class="members-panel" id="members-panel">
+    <div class="members-title">EN LIGNE</div>
+    <div id="members-list"></div>
+  </div>
+</div>
+
+<div id="remote-streams" class="remote-streams hidden"></div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="app.js"></script>
+
+<!-- Modal de suppression -->
+<div id="delete-modal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Supprimer le message</h3>
+    <p style="color: var(--t2); margin: 16px 0;">Êtes-vous sûr de vouloir supprimer ce message ?</p>
+    <div class="modal-actions">
+      <button id="delete-cancel-btn" class="modal-btn">Annuler</button>
+      <button id="delete-confirm-btn" class="modal-btn primary" style="background: #ed4245;">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal d'édition -->
+<div id="edit-modal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Modifier le message</h3>
+    <textarea id="edit-textarea" rows="3"></textarea>
+    <div class="modal-actions">
+      <button id="edit-cancel-btn" class="modal-btn">Annuler</button>
+      <button id="edit-save-btn" class="modal-btn primary">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de sélection de source d'écran -->
+<div id="screen-source-modal" class="modal hidden">
+  <div class="modal-content" style="min-width: 500px;">
+    <h3>Choisir ce que vous voulez partager</h3>
+    <div id="screen-sources-list" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-height: 400px; overflow-y: auto; margin: 16px 0;">
+      <!-- Les sources seront ajoutées ici dynamiquement -->
+    </div>
+    <div class="modal-actions">
+      <button id="screen-source-cancel-btn" class="modal-btn">Annuler</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
