@@ -242,25 +242,62 @@ socket.on('message_deleted', ({ messageId }) => {
   }
 });
   socket.on('channel_history', msgs => { $('messages-area').innerHTML = ''; msgs.forEach(addMessage); scrollBottom(); });
-  socket.on('online_users', users => {
+  socket.on('online_users', async (onlineUsers) => {
+  // Récupérer tous les utilisateurs depuis le serveur
+  const res = await fetch(SERVER_URL + '/all-users');
+  const allUsers = await res.json();
+  
+  // Séparer en ligne / hors ligne
+  const onlineUsernames = onlineUsers.map(u => u.username);
+  const online = allUsers.filter(u => onlineUsernames.includes(u.username));
+  const offline = allUsers.filter(u => !onlineUsernames.includes(u.username));
+  
+  // Afficher
   $('members-list').innerHTML = '';
-  users.forEach(user => {
-    const username = user.username || user;
-    const avatar = user.avatar;
+  
+  // Section EN LIGNE
+  if (online.length > 0) {
+    const onlineTitle = document.createElement('div');
+    onlineTitle.className = 'members-section-title';
+    onlineTitle.textContent = `EN LIGNE (${online.length})`;
+    $('members-list').appendChild(onlineTitle);
     
-    const el = document.createElement('div');
-    el.className = 'member-item';
+    online.forEach(user => {
+      const el = document.createElement('div');
+      el.className = 'member-item';
+      const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
+      el.innerHTML = `
+        <div class="member-avatar">
+          ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
+        </div>
+        <span>${user.username}</span>
+      `;
+      $('members-list').appendChild(el);
+    });
+  }
+  
+  // Section HORS LIGNE
+  if (offline.length > 0) {
+    const offlineTitle = document.createElement('div');
+offlineTitle.className = 'members-section-title offline-title';
+offlineTitle.textContent = `HORS LIGNE (${offline.length})`;
+    $('members-list').appendChild(offlineTitle);
     
-    const avatarUrl = avatar ? (avatar.startsWith('http') ? avatar : SERVER_URL + avatar) : null;
-    el.innerHTML = `
-      <div class="member-avatar">
-        ${avatarUrl ? `<img src="${avatarUrl}" alt="${username}">` : username[0].toUpperCase()}
-      </div>
-      <span>${username}</span>
-    `;
-    $('members-list').appendChild(el);
-  });
+    offline.forEach(user => {
+      const el = document.createElement('div');
+      el.className = 'member-item offline';
+      const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
+      el.innerHTML = `
+        <div class="member-avatar">
+          ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
+        </div>
+        <span>${user.username}</span>
+      `;
+      $('members-list').appendChild(el);
+    });
+  }
 });
+
   socket.on('voice_rooms_state', updateVoiceRooms);
   socket.on('voice_peers', async list => { for (const { peerId, username } of list) await createPeer(peerId, true, username); });
   socket.on('peer_joined', async ({ peerId, username, avatar }) => {
@@ -407,12 +444,15 @@ window.toggleVolumePopup = function(peerId, event) {
   }, 10);
 };
 
+// Stocker les GainNodes pour chaque peer
+
 function applyVolume(peerId, volume) {
   const audio = document.querySelector(`audio[data-peer-id="${peerId}"]`);
   if (audio) {
-    audio.volume = volume / 100;
+    audio.volume = Math.min(volume / 100, 1.0);
   }
 }
+  
 
 // TEXT CHANNEL
 function joinTextChannel(ch) {
@@ -679,17 +719,17 @@ video.onclick = () => {
 };
 } else {
     // Audio seulement
-    const audio = document.createElement('audio');
-    audio.autoplay = true;
-    audio.className = 'remote-audio';
-    audio.srcObject = stream;
-    audio.setAttribute('data-peer-id', peerId);
-    if (isDeafened) audio.muted = true;
-    document.body.appendChild(audio);
+const audio = document.createElement('audio');
+audio.autoplay = true;
+audio.className = 'remote-audio';
+audio.srcObject = stream;
+audio.setAttribute('data-peer-id', peerId);
+if (isDeafened) audio.muted = true;
+document.body.appendChild(audio);
 
-    // Appliquer le volume sauvegardé
-    const savedVolume = userVolumes[peerId] || 100;
-    audio.volume = savedVolume / 100;
+// Appliquer le volume sauvegardé
+const savedVolume = userVolumes[peerId] || 100;
+audio.volume = Math.min(savedVolume / 100, 1.0);
 
   }
 });

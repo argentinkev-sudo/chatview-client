@@ -128,7 +128,7 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 
 /* MEMBERS */
 .members-panel { width: 220px; background: var(--bg2); padding: 16px 8px; overflow-y: auto; flex-shrink: 0; }
-.members-title { font-size: 11px; font-weight: 600; color: var(--t3); text-transform: uppercase; letter-spacing: .8px; padding: 0 8px 8px; }
+.members-title { font-size: 11px; font-weight: 600; color: var(--t1); text-transform: uppercase; letter-spacing: .8px; padding: 0 8px 8px; }
 .member-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 14px; color: var(--t2); transition: background .15s; cursor: pointer; }
 .member-item:hover { background: var(--bg4); color: var(--t1); }
 .member-avatar { 
@@ -608,4 +608,32 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
   font-size: 13px;
   font-weight: 600;
   color: var(--t1);
+}
+
+/* SECTIONS EN LIGNE / HORS LIGNE */
+.members-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  padding: 12px 8px 4px;
+  margin-top: 8px;
+}
+
+.member-item.offline {
+  opacity: 0.5;
+}
+
+.member-item.offline .member-avatar {
+  filter: grayscale(100%);
+}
+
+/* Couleurs sections EN LIGNE / HORS LIGNE */
+.members-section-title {
+  color: #48a867; /* Vert clair par défaut */
+}
+
+.members-section-title.offline-title {
+  color: #df5557; /* Rouge clair pour HORS LIGNE */
 }
