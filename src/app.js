@@ -468,13 +468,36 @@ updateChannelBadges();
   socket.emit('join_channel', ch.id);
 }
 
+function formatMessageDate(timestamp) {
+  const msgDate = new Date(timestamp);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const time = msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  
+  // Même jour
+  if (msgDate.toDateString() === now.toDateString()) {
+    return `Aujourd'hui à ${time}`;
+  }
+  
+  // Hier
+  if (msgDate.toDateString() === yesterday.toDateString()) {
+    return `Hier à ${time}`;
+  }
+  
+  // Plus vieux : afficher la date
+  const day = msgDate.getDate();
+  const month = msgDate.toLocaleDateString('fr-FR', { month: 'long' });
+  return `${day} ${month} à ${time}`;
+}
+
 // MESSAGES
 function addMessage(msg) {
   
   const div = document.createElement('div');
   div.className = 'message';
   div.setAttribute('data-msg-id', msg._id);
-  const time = new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   let content = '';
   if (msg.type === 'image') {
   content = `<img class="msg-image" src="${SERVER_URL}${msg.fileUrl}" onclick="window.open('${SERVER_URL}${msg.fileUrl}')" />`;
@@ -498,7 +521,7 @@ div.innerHTML = `
   <div class="msg-body">
     <div class="msg-header">
       <span class="msg-username">${escapeHtml(msg.username)}</span>
-      <span class="msg-time">Aujourd'hui à ${time}</span>${editedLabel}
+      <span class="msg-time">${formatMessageDate(msg.timestamp)}</span>${editedLabel}
     </div>
     ${content}
   </div>
