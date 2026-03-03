@@ -46,6 +46,7 @@
         <div class="user-name" id="my-username"></div>
         <div class="user-status">🟢 En ligne</div>
       </div>
+      <button class="icon-btn hidden" id="admin-btn" title="Panel Admin">⚙️</button>
       <button class="icon-btn" id="logout-btn" title="Déconnexion">⏻</button>
     </div>
   </div>
@@ -138,6 +139,26 @@
     </div>
     <div class="modal-actions">
       <button id="screen-source-cancel-btn" class="modal-btn">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL ADMIN -->
+<div id="admin-panel" class="modal hidden">
+  <div class="admin-panel-content">
+    <div class="admin-panel-header">
+      <h2>⚙️ Panel Administrateur</h2>
+      <button class="modal-close-btn" id="admin-close-btn">✕</button>
+    </div>
+    
+    <div class="admin-section">
+      <h3>Utilisateurs</h3>
+      <div id="admin-users-list"></div>
+    </div>
+    
+    <div class="admin-section">
+      <h3>Messages récents</h3>
+      <div id="admin-messages-list"></div>
     </div>
   </div>
 </div>

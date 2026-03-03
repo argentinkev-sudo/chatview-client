@@ -54,6 +54,79 @@ $('auth-submit').onclick = async () => {
   }
 };
 
+// PANEL ADMIN
+let isAdmin = false;
+
+async function checkAdmin() {
+  try {
+    const res = await fetch(SERVER_URL + '/is-admin', {
+      headers: { 'Authorization': 'Bearer ' + myToken }
+    });
+    const data = await res.json();
+    isAdmin = data.isAdmin;
+    
+    if (isAdmin) {
+      $('admin-btn').classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error('Erreur vérification admin:', err);
+  }
+}
+
+async function loadAdminUsers() {
+  try {
+    const res = await fetch(SERVER_URL + '/all-users');
+    const users = await res.json();
+    
+    const listEl = $('admin-users-list');
+    listEl.innerHTML = '';
+    
+    users.forEach(user => {
+      const div = document.createElement('div');
+      div.className = 'admin-user-item';
+      
+      const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
+      
+      div.innerHTML = `
+        <div class="member-avatar">
+          ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
+        </div>
+        <div class="admin-user-info">
+          <strong>${user.username}</strong>
+        </div>
+        <div class="admin-user-actions">
+          <button class="admin-btn danger" onclick="deleteUser('${user.username}')">Supprimer</button>
+        </div>
+      `;
+      
+      listEl.appendChild(div);
+    });
+  } catch (err) {
+    console.error('Erreur chargement users:', err);
+  }
+}
+
+window.deleteUser = async function(username) {
+  if (!confirm(`Supprimer définitivement l'utilisateur "${username}" ?`)) return;
+  
+  try {
+    const res = await fetch(SERVER_URL + '/admin/delete-user/' + username, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + myToken }
+    });
+    
+    if (res.ok) {
+      alert('Utilisateur supprimé !');
+      loadAdminUsers();
+    } else {
+      alert('Erreur lors de la suppression');
+    }
+  } catch (err) {
+    console.error('Erreur suppression:', err);
+    alert('Erreur serveur');
+  }
+};
+
 $('auth-password').onkeydown = e => { if (e.key === 'Enter') $('auth-submit').click(); };
 $('logout-btn').onclick = () => { localStorage.clear(); location.reload(); };
 
@@ -76,9 +149,20 @@ function startApp() {
   updateMyAvatar();
   connectSocket();
   loadChannels();
+  checkAdmin();
+
+  $('admin-btn').onclick = () => {
+  $('admin-panel').classList.remove('hidden');
+  loadAdminUsers();
+  
+  // Attacher l'event listener ici
+  $('admin-close-btn').onclick = () => {
+    $('admin-panel').classList.add('hidden');
+  };
+};
 
  // Définir les fonctions d'édition/suppression
-  window.editMessage = function(messageId) {
+window.editMessage = function(messageId) {
   const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
   if (!msgEl) return;
   
@@ -110,19 +194,30 @@ function startApp() {
   cancelBtn.onclick = () => {
     modal.classList.add('hidden');
   };
-};
+};  // ← Ferme editMessage
 
-  window.deleteMessage = function(messageId) {
-  // Ouvrir le modal de confirmation
+window.deleteMessage = function(messageId, isAdminDelete = false) {
   const modal = $('delete-modal');
   const confirmBtn = $('delete-confirm-btn');
   const cancelBtn = $('delete-cancel-btn');
   
   modal.classList.remove('hidden');
   
-  // Confirmer la suppression
   confirmBtn.onclick = () => {
-    socket.emit('delete_message', { messageId });
+    if (isAdminDelete) {
+      // Suppression admin via route spéciale
+      fetch(SERVER_URL + '/admin/delete-message/' + messageId, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + myToken }
+      }).then(res => {
+        if (res.ok) {
+          socket.emit('message_deleted', { messageId });
+        }
+      });
+    } else {
+      // Suppression normale
+      socket.emit('delete_message', { messageId });
+    }
     modal.classList.add('hidden');
     setTimeout(() => {
       const input = $('msg-input');
@@ -130,7 +225,6 @@ function startApp() {
     }, 100);
   };
   
-  // Annuler
   cancelBtn.onclick = () => {
     modal.classList.add('hidden');
     setTimeout(() => {
@@ -138,12 +232,10 @@ function startApp() {
       if (input) input.focus();
     }, 100);
   };
-};
-} 
+};  // ← Ferme deleteMessage
+}  // ← Ferme startApp()
 
 // Changement d'avatar
-
-
 $('change-avatar-btn').onclick = () => {
   $('avatar-input').click();
 };
@@ -525,12 +617,12 @@ div.innerHTML = `
     </div>
     ${content}
   </div>
-  ${isOwnMessage ? `
-    <div class="msg-actions">
-      <button class="msg-action-btn" onmousedown="event.preventDefault()" onclick="editMessage('${msg._id}')">✏️</button>
-      <button class="msg-action-btn" onmousedown="event.preventDefault()" onclick="deleteMessage('${msg._id}')">🗑️</button>
-    </div>
-  ` : ''}
+  ${(isOwnMessage || isAdmin) ? `
+  <div class="msg-actions">
+    ${isOwnMessage ? `<button class="msg-action-btn" onmousedown="event.preventDefault()" onclick="editMessage('${msg._id}')">✏️</button>` : ''}
+    <button class="msg-action-btn" onmousedown="event.preventDefault()" onclick="deleteMessage('${msg._id}', ${isAdmin})">🗑️</button>
+  </div>
+` : ''}
 `;
   $('messages-area').appendChild(div);
   scrollBottom();
@@ -575,6 +667,7 @@ async function joinVoiceChannel(ch) {
   $('voice-bar-name').textContent = ch.name;
   $('remote-streams').classList.remove('hidden');
   socket.emit('join_voice', ch.id);
+  joinSound.play().catch(() => {});
 }
 
 $('leave-voice-btn').onclick = leaveVoice;
@@ -589,6 +682,7 @@ async function leaveVoice() {
   $('remote-streams').classList.add('hidden');
   $('voice-bar').classList.add('hidden');
   document.getElementById('ch-' + currentVoiceChannel)?.classList.remove('active');
+  leaveSound.play().catch(() => {});
   currentVoiceChannel = null;
 }
 
