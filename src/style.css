@@ -759,3 +759,28 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .role-select:hover {
   background: var(--bg3);
 }
+
+/* Badges rôles */
+.role-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.role-badge.role-admin {
+  background: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+}
+
+.role-badge.role-moderator {
+  background: rgba(88, 101, 242, 0.2);
+  color: #5865f2;
+}
+
+.role-badge.role-user {
+  background: rgba(128, 132, 142, 0.2);
+  color: #80848e;
+}

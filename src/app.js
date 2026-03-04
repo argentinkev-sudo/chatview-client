@@ -10,7 +10,7 @@ const $ = id => document.getElementById(id);
 let unreadCounts = {}; // { channelId: count }
 const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
 const joinSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-const leaveSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3'); 
+const leaveSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3');
 
 // AUTH
 let isRegistering = false;
@@ -45,8 +45,8 @@ $('auth-submit').onclick = async () => {
     localStorage.setItem('token', myToken);
     localStorage.setItem('username', myUsername);
     if (myAvatar) {
-    localStorage.setItem('avatar', myAvatar);
-   } 
+      localStorage.setItem('avatar', myAvatar);
+    }
     startApp();
   } catch {
     $('auth-error').textContent = 'Impossible de contacter le serveur';
@@ -56,6 +56,7 @@ $('auth-submit').onclick = async () => {
 
 // PANEL ADMIN
 let isAdmin = false;
+let myRole = 'user';
 
 async function checkAdmin() {
   try {
@@ -64,7 +65,13 @@ async function checkAdmin() {
     });
     const data = await res.json();
     isAdmin = data.isAdmin;
-    
+
+    // Récupérer le rôle
+    const userRes = await fetch(SERVER_URL + '/all-users');
+    const users = await userRes.json();
+    const me = users.find(u => u.username === myUsername);
+    myRole = me?.role || 'user';
+
     if (isAdmin) {
       $('admin-btn').classList.remove('hidden');
     }
@@ -73,37 +80,47 @@ async function checkAdmin() {
   }
 }
 
+function getRoleLabel(role) {
+  const labels = {
+    'admin': '👑 Admin',
+    'moderator': '🛡️ Modérateur',
+    'user': '👤 Utilisateur'
+  };
+  return labels[role] || labels['user'];
+}
+
 async function loadAdminUsers() {
   try {
     const res = await fetch(SERVER_URL + '/all-users');
     const users = await res.json();
-    
+
     const listEl = $('admin-users-list');
     listEl.innerHTML = '';
-    
+
     users.forEach(user => {
       const div = document.createElement('div');
       div.className = 'admin-user-item';
-      
+
       const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
-      
+
       div.innerHTML = `
   <div class="member-avatar">
     ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
   </div>
   <div class="admin-user-info">
-    <strong>${user.username}</strong>
-    <select class="role-select" onchange="changeRole('${user.username}', this.value)">
-      <option value="user" ${user.role === 'user' || !user.role ? 'selected' : ''}>Utilisateur</option>
-      <option value="moderator" ${user.role === 'moderator' ? 'selected' : ''}>Modérateur</option>
-      <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-    </select>
-  </div>
+  <strong>${user.username}</strong>
+  <span class="role-badge role-${user.role || 'user'}">${getRoleLabel(user.role || 'user')}</span>
+  <select class="role-select" onchange="changeRole('${user.username}', this.value)">
+    <option value="user" ${user.role === 'user' || !user.role ? 'selected' : ''}>Utilisateur</option>
+    <option value="moderator" ${user.role === 'moderator' ? 'selected' : ''}>Modérateur</option>
+    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+  </select>
+</div>
   <div class="admin-user-actions">
-    <button class="admin-btn danger" onclick="deleteUser('${user.username}')">Supprimer</button>
-  </div>
+  ${user.username !== myUsername ? `<button class="admin-btn danger" onclick="deleteUser('${user.username}')">Supprimer</button>` : ''}
+</div>
 `;
-      
+
       listEl.appendChild(div);
     });
   } catch (err) {
@@ -111,15 +128,15 @@ async function loadAdminUsers() {
   }
 }
 
-window.deleteUser = async function(username) {
+window.deleteUser = async function (username) {
   if (!confirm(`Supprimer définitivement l'utilisateur "${username}" ?`)) return;
-  
+
   try {
     const res = await fetch(SERVER_URL + '/admin/delete-user/' + username, {
       method: 'DELETE',
       headers: { 'Authorization': 'Bearer ' + myToken }
     });
-    
+
     if (res.ok) {
       alert('Utilisateur supprimé !');
       loadAdminUsers();
@@ -132,7 +149,7 @@ window.deleteUser = async function(username) {
   }
 };
 
-window.changeRole = async function(username, newRole) {
+window.changeRole = async function (username, newRole) {
   try {
     const res = await fetch(SERVER_URL + '/admin/change-role', {
       method: 'POST',
@@ -142,7 +159,7 @@ window.changeRole = async function(username, newRole) {
       },
       body: JSON.stringify({ username, role: newRole })
     });
-    
+
     if (res.ok) {
       console.log(`Rôle de ${username} changé en ${newRole}`);
     } else {
@@ -161,11 +178,11 @@ $('logout-btn').onclick = () => { localStorage.clear(); location.reload(); };
 const savedToken = localStorage.getItem('token');
 const savedUsername = localStorage.getItem('username');
 const savedAvatar = localStorage.getItem('avatar');
-if (savedToken && savedUsername) { 
-  myToken = savedToken; 
-  myUsername = savedUsername; 
+if (savedToken && savedUsername) {
+  myToken = savedToken;
+  myUsername = savedUsername;
   myAvatar = (savedAvatar && savedAvatar !== 'null') ? savedAvatar : null;
-  startApp(); 
+  startApp();
 }
 
 function startApp() {
@@ -179,87 +196,87 @@ function startApp() {
   checkAdmin();
 
   $('admin-btn').onclick = () => {
-  $('admin-panel').classList.remove('hidden');
-  loadAdminUsers();
-  
-  // Attacher l'event listener ici
-  $('admin-close-btn').onclick = () => {
-    $('admin-panel').classList.add('hidden');
-  };
-};
+    $('admin-panel').classList.remove('hidden');
+    loadAdminUsers();
 
- // Définir les fonctions d'édition/suppression
-window.editMessage = function(messageId) {
-  const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
-  if (!msgEl) return;
-  
-  const contentEl = msgEl.querySelector('.msg-content');
-  if (!contentEl) return;
-  
-  const currentText = contentEl.textContent;
-  
-  // Ouvrir le modal
-  const modal = $('edit-modal');
-  const textarea = $('edit-textarea');
-  const saveBtn = $('edit-save-btn');
-  const cancelBtn = $('edit-cancel-btn');
-  
-  textarea.value = currentText;
-  modal.classList.remove('hidden');
-  textarea.focus();
-  
-  // Sauvegarder
-  saveBtn.onclick = () => {
-    const newText = textarea.value.trim();
-    if (newText && newText !== currentText) {
-      socket.emit('edit_message', { messageId, newContent: newText });
-    }
-    modal.classList.add('hidden');
+    // Attacher l'event listener ici
+    $('admin-close-btn').onclick = () => {
+      $('admin-panel').classList.add('hidden');
+    };
   };
-  
-  // Annuler
-  cancelBtn.onclick = () => {
-    modal.classList.add('hidden');
-  };
-};  // ← Ferme editMessage
 
-window.deleteMessage = function(messageId, isAdminDelete = false) {
-  const modal = $('delete-modal');
-  const confirmBtn = $('delete-confirm-btn');
-  const cancelBtn = $('delete-cancel-btn');
-  
-  modal.classList.remove('hidden');
-  
-  confirmBtn.onclick = () => {
-    if (isAdminDelete) {
-      // Suppression admin via route spéciale
-      fetch(SERVER_URL + '/admin/delete-message/' + messageId, {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer ' + myToken }
-      }).then(res => {
-        if (res.ok) {
-          socket.emit('message_deleted', { messageId });
-        }
-      });
-    } else {
-      // Suppression normale
-      socket.emit('delete_message', { messageId });
-    }
-    modal.classList.add('hidden');
-    setTimeout(() => {
-      const input = $('msg-input');
-      if (input) input.focus();
-    }, 100);
-  };
-  
-  cancelBtn.onclick = () => {
-    modal.classList.add('hidden');
-    setTimeout(() => {
-      const input = $('msg-input');
-      if (input) input.focus();
-    }, 100);
-  };
-};  // ← Ferme deleteMessage
+  // Définir les fonctions d'édition/suppression
+  window.editMessage = function (messageId) {
+    const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+    if (!msgEl) return;
+
+    const contentEl = msgEl.querySelector('.msg-content');
+    if (!contentEl) return;
+
+    const currentText = contentEl.textContent;
+
+    // Ouvrir le modal
+    const modal = $('edit-modal');
+    const textarea = $('edit-textarea');
+    const saveBtn = $('edit-save-btn');
+    const cancelBtn = $('edit-cancel-btn');
+
+    textarea.value = currentText;
+    modal.classList.remove('hidden');
+    textarea.focus();
+
+    // Sauvegarder
+    saveBtn.onclick = () => {
+      const newText = textarea.value.trim();
+      if (newText && newText !== currentText) {
+        socket.emit('edit_message', { messageId, newContent: newText });
+      }
+      modal.classList.add('hidden');
+    };
+
+    // Annuler
+    cancelBtn.onclick = () => {
+      modal.classList.add('hidden');
+    };
+  };  // ← Ferme editMessage
+
+  window.deleteMessage = function (messageId, isAdminDelete = false) {
+    const modal = $('delete-modal');
+    const confirmBtn = $('delete-confirm-btn');
+    const cancelBtn = $('delete-cancel-btn');
+
+    modal.classList.remove('hidden');
+
+    confirmBtn.onclick = () => {
+      if (isAdminDelete) {
+        // Suppression admin via route spéciale
+        fetch(SERVER_URL + '/admin/delete-message/' + messageId, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + myToken }
+        }).then(res => {
+          if (res.ok) {
+            socket.emit('message_deleted', { messageId });
+          }
+        });
+      } else {
+        // Suppression normale
+        socket.emit('delete_message', { messageId });
+      }
+      modal.classList.add('hidden');
+      setTimeout(() => {
+        const input = $('msg-input');
+        if (input) input.focus();
+      }, 100);
+    };
+
+    cancelBtn.onclick = () => {
+      modal.classList.add('hidden');
+      setTimeout(() => {
+        const input = $('msg-input');
+        if (input) input.focus();
+      }, 100);
+    };
+  };  // ← Ferme deleteMessage
 }  // ← Ferme startApp()
 
 // Changement d'avatar
@@ -270,29 +287,29 @@ $('change-avatar-btn').onclick = () => {
 $('avatar-input').onchange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  
+
   // Vérifier la taille (max 5MB)
   if (file.size > 5 * 1024 * 1024) {
     alert('L\'image est trop grosse (max 5MB)');
     return;
   }
-  
+
   const formData = new FormData();
   formData.append('avatar', file);
-  
+
   try {
     const res = await fetch(SERVER_URL + '/upload-avatar', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + myToken },
       body: formData
     });
-    
+
     const data = await res.json();
     if (!res.ok) {
       alert(data.error || 'Erreur upload');
       return;
     }
-    
+
     // Mettre à jour l'avatar localement
     myAvatar = data.avatar;
     localStorage.setItem('avatar', myAvatar);
@@ -319,116 +336,116 @@ function updateMyAvatar() {
 function connectSocket() {
   socket = io(SERVER_URL, { auth: { token: myToken } });
   socket.on('new_message', (msg) => {
-  console.log('Message reçu:', msg);
+    console.log('Message reçu:', msg);
 
-// Écouter les modifications de messages
-socket.on('message_edited', ({ messageId, content, edited }) => {
-  const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
-  if (!msgEl) return;
-  
-  const contentEl = msgEl.querySelector('.msg-content');
-  const timeEl = msgEl.querySelector('.msg-time');
-  
-  if (contentEl) contentEl.textContent = content;
-  if (timeEl && edited && !msgEl.querySelector('.msg-edited')) {
-    timeEl.insertAdjacentHTML('afterend', '<span class="msg-edited">(modifié)</span>');
-  }
-});
+    // Écouter les modifications de messages
+    socket.on('message_edited', ({ messageId, content, edited }) => {
+      const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+      if (!msgEl) return;
 
-// Écouter les suppressions de messages
-socket.on('message_deleted', ({ messageId }) => {
-  const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
-  if (msgEl) {
-    msgEl.remove();
-    // Forcer le focus sur l'input après suppression
-    setTimeout(() => {
-      const input = $('msg-input');
-      if (input) input.focus();
-    }, 50);
-  }
-});
+      const contentEl = msgEl.querySelector('.msg-content');
+      const timeEl = msgEl.querySelector('.msg-time');
 
-  // Si le message vient d'un autre salon, incrémenter le compteur
-  if (msg.channelId && msg.channelId !== currentChannel && msg.username !== myUsername) {
-    console.log('Notification pour salon:', msg.channelId, 'currentChannel:', currentChannel);
-    unreadCounts[msg.channelId] = (unreadCounts[msg.channelId] || 0) + 1;
-    updateChannelBadges();
-    notificationSound.play().catch(() => {});
-  }
-  // Afficher le message SEULEMENT si c'est le bon salon
-  if (msg.channelId === currentChannel) {
-    addMessage(msg);
-  }
-});
+      if (contentEl) contentEl.textContent = content;
+      if (timeEl && edited && !msgEl.querySelector('.msg-edited')) {
+        timeEl.insertAdjacentHTML('afterend', '<span class="msg-edited">(modifié)</span>');
+      }
+    });
+
+    // Écouter les suppressions de messages
+    socket.on('message_deleted', ({ messageId }) => {
+      const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+      if (msgEl) {
+        msgEl.remove();
+        // Forcer le focus sur l'input après suppression
+        setTimeout(() => {
+          const input = $('msg-input');
+          if (input) input.focus();
+        }, 50);
+      }
+    });
+
+    // Si le message vient d'un autre salon, incrémenter le compteur
+    if (msg.channelId && msg.channelId !== currentChannel && msg.username !== myUsername) {
+      console.log('Notification pour salon:', msg.channelId, 'currentChannel:', currentChannel);
+      unreadCounts[msg.channelId] = (unreadCounts[msg.channelId] || 0) + 1;
+      updateChannelBadges();
+      notificationSound.play().catch(() => { });
+    }
+    // Afficher le message SEULEMENT si c'est le bon salon
+    if (msg.channelId === currentChannel) {
+      addMessage(msg);
+    }
+  });
   socket.on('channel_history', msgs => { $('messages-area').innerHTML = ''; msgs.forEach(addMessage); scrollBottom(); });
   socket.on('online_users', async (onlineUsers) => {
-  // Récupérer tous les utilisateurs depuis le serveur
-  const res = await fetch(SERVER_URL + '/all-users');
-  const allUsers = await res.json();
-  
-  // Séparer en ligne / hors ligne
-  const onlineUsernames = onlineUsers.map(u => u.username);
-  const online = allUsers.filter(u => onlineUsernames.includes(u.username));
-  const offline = allUsers.filter(u => !onlineUsernames.includes(u.username));
-  
-  // Afficher
-  $('members-list').innerHTML = '';
-  
-  // Section EN LIGNE
-  if (online.length > 0) {
-    const onlineTitle = document.createElement('div');
-    onlineTitle.className = 'members-section-title';
-    onlineTitle.textContent = `EN LIGNE (${online.length})`;
-    $('members-list').appendChild(onlineTitle);
-    
-    online.forEach(user => {
-      const el = document.createElement('div');
-      el.className = 'member-item';
-      const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
-      el.innerHTML = `
+    // Récupérer tous les utilisateurs depuis le serveur
+    const res = await fetch(SERVER_URL + '/all-users');
+    const allUsers = await res.json();
+
+    // Séparer en ligne / hors ligne
+    const onlineUsernames = onlineUsers.map(u => u.username);
+    const online = allUsers.filter(u => onlineUsernames.includes(u.username));
+    const offline = allUsers.filter(u => !onlineUsernames.includes(u.username));
+
+    // Afficher
+    $('members-list').innerHTML = '';
+
+    // Section EN LIGNE
+    if (online.length > 0) {
+      const onlineTitle = document.createElement('div');
+      onlineTitle.className = 'members-section-title';
+      onlineTitle.textContent = `EN LIGNE (${online.length})`;
+      $('members-list').appendChild(onlineTitle);
+
+      online.forEach(user => {
+        const el = document.createElement('div');
+        el.className = 'member-item';
+        const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
+        el.innerHTML = `
         <div class="member-avatar">
           ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
         </div>
         <span>${user.username}</span>
       `;
-      $('members-list').appendChild(el);
-    });
-  }
-  
-  // Section HORS LIGNE
-  if (offline.length > 0) {
-    const offlineTitle = document.createElement('div');
-offlineTitle.className = 'members-section-title offline-title';
-offlineTitle.textContent = `HORS LIGNE (${offline.length})`;
-    $('members-list').appendChild(offlineTitle);
-    
-    offline.forEach(user => {
-      const el = document.createElement('div');
-      el.className = 'member-item offline';
-      const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
-      el.innerHTML = `
+        $('members-list').appendChild(el);
+      });
+    }
+
+    // Section HORS LIGNE
+    if (offline.length > 0) {
+      const offlineTitle = document.createElement('div');
+      offlineTitle.className = 'members-section-title offline-title';
+      offlineTitle.textContent = `HORS LIGNE (${offline.length})`;
+      $('members-list').appendChild(offlineTitle);
+
+      offline.forEach(user => {
+        const el = document.createElement('div');
+        el.className = 'member-item offline';
+        const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
+        el.innerHTML = `
         <div class="member-avatar">
           ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
         </div>
         <span>${user.username}</span>
       `;
-      $('members-list').appendChild(el);
-    });
-  }
-});
+        $('members-list').appendChild(el);
+      });
+    }
+  });
 
   socket.on('voice_rooms_state', updateVoiceRooms);
   socket.on('voice_peers', async list => { for (const { peerId, username } of list) await createPeer(peerId, true, username); });
   socket.on('peer_joined', async ({ peerId, username, avatar }) => {
-  await createPeer(peerId, false, username);
-  joinSound.play().catch(() => {});
-});
+    await createPeer(peerId, false, username);
+    joinSound.play().catch(() => { });
+  });
   socket.on('signal', ({ from, signal }) => { if (peers[from]) peers[from].peer.signal(signal); });
   socket.on('peer_left', ({ peerId }) => {
     if (peers[peerId]) { peers[peerId].peer.destroy(); delete peers[peerId]; }
     const box = document.getElementById('stream-' + peerId);
     if (box) box.remove();
-    leaveSound.play().catch(() => {});
+    leaveSound.play().catch(() => { });
   });
 }
 
@@ -462,52 +479,52 @@ function updateVoiceRooms(state) {
     if (!el) return;
     let sub = el.nextElementSibling;
     if (sub && sub.classList.contains('channel-voice-users')) sub.remove();
-    
+
     if (usersList.length > 0) {
       const s = document.createElement('div');
       s.className = 'channel-voice-users';
       s.textContent = usersList.map(u => u.username || u).join(', ');
       el.after(s);
     }
-    
+
     if (cId === currentVoiceChannel) {
-  const usersEl = $('voice-bar-users');
-  usersEl.innerHTML = '';
-  
-  // Ajouter ton propre utilisateur d'abord
-  const myUserDiv = document.createElement('div');
-  myUserDiv.className = 'voice-user-item';
-  myUserDiv.innerHTML = `
+      const usersEl = $('voice-bar-users');
+      usersEl.innerHTML = '';
+
+      // Ajouter ton propre utilisateur d'abord
+      const myUserDiv = document.createElement('div');
+      myUserDiv.className = 'voice-user-item';
+      myUserDiv.innerHTML = `
     <div class="voice-user-avatar">
       ${myAvatar ? `<img src="${myAvatar.startsWith('http') ? myAvatar : SERVER_URL + myAvatar}" alt="${myUsername}">` : myUsername[0].toUpperCase()}
     </div>
     <span>${myUsername}</span>
   `;
-  usersEl.appendChild(myUserDiv);
-  
-  // Puis ajouter les autres utilisateurs
-  usersList.forEach(user => {
-    const peerEntry = Object.entries(peers).find(([id, data]) => data.username === (user.username || user));
-    if (!peerEntry) return;
-    
-    const [peerId, peerData] = peerEntry;
-    const userDiv = document.createElement('div');
-    userDiv.className = 'voice-user-item';
-    userDiv.id = 'voice-user-' + peerId;
-    
-    const username = user.username || user;
-    const avatar = user.avatar;
-    
-    userDiv.innerHTML = `
+      usersEl.appendChild(myUserDiv);
+
+      // Puis ajouter les autres utilisateurs
+      usersList.forEach(user => {
+        const peerEntry = Object.entries(peers).find(([id, data]) => data.username === (user.username || user));
+        if (!peerEntry) return;
+
+        const [peerId, peerData] = peerEntry;
+        const userDiv = document.createElement('div');
+        userDiv.className = 'voice-user-item';
+        userDiv.id = 'voice-user-' + peerId;
+
+        const username = user.username || user;
+        const avatar = user.avatar;
+
+        userDiv.innerHTML = `
       <div class="voice-user-avatar">
         ${avatar ? `<img src="${avatar.startsWith('http') ? avatar : SERVER_URL + avatar}" alt="${username}">` : username[0].toUpperCase()}
       </div>
       <span>${username}</span>
       <button class="voice-user-volume-btn" onclick="toggleVolumePopup('${peerId}', event)">🔊</button>
     `;
-    usersEl.appendChild(userDiv);
-  });
-}
+        usersEl.appendChild(userDiv);
+      });
+    }
   });
 }
 
@@ -521,14 +538,14 @@ if (savedVolumes) {
   userVolumes = JSON.parse(savedVolumes);
 }
 
-window.toggleVolumePopup = function(peerId, event) {
+window.toggleVolumePopup = function (peerId, event) {
   event.stopPropagation();
-  
+
   // Fermer les autres popups
   document.querySelectorAll('.volume-popup').forEach(p => p.remove());
-  
+
   const currentVolume = userVolumes[peerId] || 100;
-  
+
   const popup = document.createElement('div');
   popup.className = 'volume-popup';
   popup.innerHTML = `
@@ -536,14 +553,14 @@ window.toggleVolumePopup = function(peerId, event) {
     <input type="range" class="volume-slider" min="0" max="200" value="${currentVolume}" id="volume-slider-${peerId}">
     <div class="volume-value" id="volume-value-${peerId}">${currentVolume}%</div>
   `;
-  
+
   const userEl = document.getElementById('voice-user-' + peerId);
   userEl.appendChild(popup);
-  
+
   // Gérer le changement de volume
   const slider = document.getElementById('volume-slider-' + peerId);
   const valueDisplay = document.getElementById('volume-value-' + peerId);
-  
+
   slider.oninput = () => {
     const volume = parseInt(slider.value);
     valueDisplay.textContent = volume + '%';
@@ -551,7 +568,7 @@ window.toggleVolumePopup = function(peerId, event) {
     localStorage.setItem('userVolumes', JSON.stringify(userVolumes));
     applyVolume(peerId, volume);
   };
-  
+
   // Fermer au clic extérieur
   setTimeout(() => {
     document.addEventListener('click', function closePopup(e) {
@@ -571,13 +588,13 @@ function applyVolume(peerId, volume) {
     audio.volume = Math.min(volume / 100, 1.0);
   }
 }
-  
+
 
 // TEXT CHANNEL
 function joinTextChannel(ch) {
   // Réinitialiser le compteur de ce salon
-unreadCounts[ch.id] = 0;
-updateChannelBadges();
+  unreadCounts[ch.id] = 0;
+  updateChannelBadges();
   document.querySelectorAll('.channel-item').forEach(e => e.classList.remove('active'));
   document.getElementById('ch-' + ch.id)?.classList.add('active');
   currentChannel = ch.id;
@@ -592,19 +609,19 @@ function formatMessageDate(timestamp) {
   const now = new Date();
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  
+
   const time = msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  
+
   // Même jour
   if (msgDate.toDateString() === now.toDateString()) {
     return `Aujourd'hui à ${time}`;
   }
-  
+
   // Hier
   if (msgDate.toDateString() === yesterday.toDateString()) {
     return `Hier à ${time}`;
   }
-  
+
   // Plus vieux : afficher la date
   const day = msgDate.getDate();
   const month = msgDate.toLocaleDateString('fr-FR', { month: 'long' });
@@ -613,27 +630,27 @@ function formatMessageDate(timestamp) {
 
 // MESSAGES
 function addMessage(msg) {
-  
+
   const div = document.createElement('div');
   div.className = 'message';
   div.setAttribute('data-msg-id', msg._id);
   let content = '';
   if (msg.type === 'image') {
-  content = `<img class="msg-image" src="${SERVER_URL}${msg.fileUrl}" onclick="window.open('${SERVER_URL}${msg.fileUrl}')" />`;
-} else if (msg.type === 'file') {
-  content = `<a class="msg-file" href="${SERVER_URL}${msg.fileUrl}" target="_blank">📎 ${msg.fileName}</a>`;
-} else {
-  // Détection auto des URLs d'images/GIFs
-  if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {
-    content = `<img class="msg-image" src="${msg.content}" onclick="window.open('${msg.content}')" />`;
+    content = `<img class="msg-image" src="${SERVER_URL}${msg.fileUrl}" onclick="window.open('${SERVER_URL}${msg.fileUrl}')" />`;
+  } else if (msg.type === 'file') {
+    content = `<a class="msg-file" href="${SERVER_URL}${msg.fileUrl}" target="_blank">📎 ${msg.fileName}</a>`;
   } else {
-    content = `<div class="msg-content">${escapeHtml(msg.content)}</div>`;
+    // Détection auto des URLs d'images/GIFs
+    if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {
+      content = `<img class="msg-image" src="${msg.content}" onclick="window.open('${msg.content}')" />`;
+    } else {
+      content = `<div class="msg-content">${escapeHtml(msg.content)}</div>`;
+    }
   }
-}
-const isOwnMessage = msg.username === myUsername;
-const editedLabel = msg.edited ? '<span class="msg-edited">(modifié)</span>' : '';
+  const isOwnMessage = msg.username === myUsername;
+  const editedLabel = msg.edited ? '<span class="msg-edited">(modifié)</span>' : '';
 
-div.innerHTML = `
+  div.innerHTML = `
   <div class="msg-avatar">
     ${msg.avatar ? `<img src="${msg.avatar.startsWith('http') ? msg.avatar : SERVER_URL + msg.avatar}" alt="${msg.username}">` : msg.username[0].toUpperCase()}
   </div>
@@ -644,10 +661,10 @@ div.innerHTML = `
     </div>
     ${content}
   </div>
-  ${(isOwnMessage || isAdmin) ? `
+  ${(isOwnMessage || isAdmin || myRole === 'moderator') ? `
   <div class="msg-actions">
     ${isOwnMessage ? `<button class="msg-action-btn" onmousedown="event.preventDefault()" onclick="editMessage('${msg._id}')">✏️</button>` : ''}
-    <button class="msg-action-btn" onmousedown="event.preventDefault()" onclick="deleteMessage('${msg._id}', ${isAdmin})">🗑️</button>
+    <button class="msg-action-btn" onmousedown="event.preventDefault()" onclick="deleteMessage('${msg._id}', ${isAdmin || myRole === 'moderator'})">🗑️</button>
   </div>
 ` : ''}
 `;
@@ -694,7 +711,7 @@ async function joinVoiceChannel(ch) {
   $('voice-bar-name').textContent = ch.name;
   $('remote-streams').classList.remove('hidden');
   socket.emit('join_voice', ch.id);
-  joinSound.play().catch(() => {});
+  joinSound.play().catch(() => { });
 }
 
 $('leave-voice-btn').onclick = leaveVoice;
@@ -709,7 +726,7 @@ async function leaveVoice() {
   $('remote-streams').classList.add('hidden');
   $('voice-bar').classList.add('hidden');
   document.getElementById('ch-' + currentVoiceChannel)?.classList.remove('active');
-  leaveSound.play().catch(() => {});
+  leaveSound.play().catch(() => { });
   currentVoiceChannel = null;
 }
 
@@ -735,50 +752,50 @@ $('screen-btn').onclick = async () => {
     $('screen-btn').classList.remove('active');
     $('screen-btn').textContent = '🖥️';
   } else {
-  try {
-    // Récupérer les sources disponibles
-    const sources = await window.electronAPI.getDesktopSources();
-    
-    if (!sources || sources.length === 0) {
-      console.error('Aucune source d\'écran disponible');
-      return;
-    }
-    
-    // Afficher le modal de sélection
-    const modal = $('screen-source-modal');
-    const sourcesList = $('screen-sources-list');
-    const cancelBtn = $('screen-source-cancel-btn');
-    
-    // Vider la liste
-    sourcesList.innerHTML = '';
-    
-    // Ajouter chaque source
-    sources.forEach(source => {
-      const item = document.createElement('div');
-      item.className = 'screen-source-item';
-      item.innerHTML = `
+    try {
+      // Récupérer les sources disponibles
+      const sources = await window.electronAPI.getDesktopSources();
+
+      if (!sources || sources.length === 0) {
+        console.error('Aucune source d\'écran disponible');
+        return;
+      }
+
+      // Afficher le modal de sélection
+      const modal = $('screen-source-modal');
+      const sourcesList = $('screen-sources-list');
+      const cancelBtn = $('screen-source-cancel-btn');
+
+      // Vider la liste
+      sourcesList.innerHTML = '';
+
+      // Ajouter chaque source
+      sources.forEach(source => {
+        const item = document.createElement('div');
+        item.className = 'screen-source-item';
+        item.innerHTML = `
         <img src="${source.thumbnail.toDataURL()}" alt="${source.name}">
         <p>${source.name}</p>
       `;
-      
-      item.onclick = async () => {
+
+        item.onclick = async () => {
+          modal.classList.add('hidden');
+          await startScreenShare(source.id);
+        };
+
+        sourcesList.appendChild(item);
+      });
+
+      modal.classList.remove('hidden');
+
+      cancelBtn.onclick = () => {
         modal.classList.add('hidden');
-        await startScreenShare(source.id);
       };
-      
-      sourcesList.appendChild(item);
-    });
-    
-    modal.classList.remove('hidden');
-    
-    cancelBtn.onclick = () => {
-      modal.classList.add('hidden');
-    };
-    
-  } catch (e) { 
-    console.error('Screen share échoué:', e); 
+
+    } catch (e) {
+      console.error('Screen share échoué:', e);
+    }
   }
- }
 };
 
 async function startScreenShare(sourceId) {
@@ -797,19 +814,19 @@ async function startScreenShare(sourceId) {
     $('screen-btn').classList.add('active');
     $('screen-btn').textContent = '🛑';
     screenStream.getVideoTracks()[0].onended = () => $('screen-btn').click();
-    
-  
+
+
     // Diffuser le flux d'écran à tous les peers connectés
-Object.keys(peers).forEach(peerId => {
-  const peerData = peers[peerId];
-  if (peerData && peerData.peer) {
-    peerData.peer.addStream(screenStream);
+    Object.keys(peers).forEach(peerId => {
+      const peerData = peers[peerId];
+      if (peerData && peerData.peer) {
+        peerData.peer.addStream(screenStream);
+      }
+    });
+  } catch (e) {
+    console.error('Screen share échoué:', e);
   }
-});
-} catch (e) { 
-    console.error('Screen share échoué:', e); 
-  }
- }
+}
 // ═══════════════════════════════════════════════════════════════
 // GESTION DES BADGES DE NOTIFICATION
 // ═══════════════════════════════════════════════════════════════
@@ -821,10 +838,10 @@ function updateChannelBadges() {
     const channelEl = document.getElementById('ch-' + channelId);
     console.log('Salon:', channelId, 'count:', count, 'element trouvé:', channelEl); // ← DEBUG
     if (!channelEl) return;
-    
+
     const oldBadge = channelEl.querySelector('.channel-badge');
     if (oldBadge) oldBadge.remove();
-    
+
     if (count > 0) {
       const badge = document.createElement('span');
       badge.className = 'channel-badge';
@@ -842,41 +859,41 @@ async function createPeer(peerId, initiator, username) {
   });
   peer.on('signal', signal => socket.emit('signal', { to: peerId, signal }));
   peer.on('stream', stream => {
-  // Vérifier s'il y a une vidéo (partage d'écran)
-  const hasVideo = stream.getVideoTracks().length > 0;
-  
-  if (hasVideo) {
-  // Supprimer l'ancienne vidéo s'il y en a une
-  const oldVideo = document.getElementById('remote-video-' + peerId);
-  if (oldVideo) oldVideo.remove();
-  
-  // Créer la nouvelle vidéo
-const video = document.createElement('video');
-video.id = 'remote-video-' + peerId;
-video.className = 'remote-video';
-video.autoplay = true;
-video.srcObject = stream;
-$('remote-streams').appendChild(video);
+    // Vérifier s'il y a une vidéo (partage d'écran)
+    const hasVideo = stream.getVideoTracks().length > 0;
 
-video.onclick = () => {
-  video.classList.toggle('video-enlarged');
-};
-} else {
-    // Audio seulement
-const audio = document.createElement('audio');
-audio.autoplay = true;
-audio.className = 'remote-audio';
-audio.srcObject = stream;
-audio.setAttribute('data-peer-id', peerId);
-if (isDeafened) audio.muted = true;
-document.body.appendChild(audio);
+    if (hasVideo) {
+      // Supprimer l'ancienne vidéo s'il y en a une
+      const oldVideo = document.getElementById('remote-video-' + peerId);
+      if (oldVideo) oldVideo.remove();
 
-// Appliquer le volume sauvegardé
-const savedVolume = userVolumes[peerId] || 100;
-audio.volume = Math.min(savedVolume / 100, 1.0);
+      // Créer la nouvelle vidéo
+      const video = document.createElement('video');
+      video.id = 'remote-video-' + peerId;
+      video.className = 'remote-video';
+      video.autoplay = true;
+      video.srcObject = stream;
+      $('remote-streams').appendChild(video);
 
-  }
-});
+      video.onclick = () => {
+        video.classList.toggle('video-enlarged');
+      };
+    } else {
+      // Audio seulement
+      const audio = document.createElement('audio');
+      audio.autoplay = true;
+      audio.className = 'remote-audio';
+      audio.srcObject = stream;
+      audio.setAttribute('data-peer-id', peerId);
+      if (isDeafened) audio.muted = true;
+      document.body.appendChild(audio);
+
+      // Appliquer le volume sauvegardé
+      const savedVolume = userVolumes[peerId] || 100;
+      audio.volume = Math.min(savedVolume / 100, 1.0);
+
+    }
+  });
   peer.on('error', e => console.error('Peer error:', e));
   peers[peerId] = { peer, username };
 }
@@ -887,13 +904,13 @@ $('members-btn').onclick = () => {
 };
 
 function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 // ═══════════════════════════════════════════════════════════════
 // EMOJI/GIF PICKER
 // ═══════════════════════════════════════════════════════════════
 
-const emojis = ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','☺️','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','🙈','🙉','🙊','💋','💌','💘','💝','💖','💗','💓','💞','💕','💟','❣️','💔','❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💯','💢','💥','💫','💦','💨','🕳️','💬','👁️‍🗨️','🗨️','🗯️','💭','💤','👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🧠','🫀','🫁','🦷','🦴','👀','👁️','👅','👄','🎂','🎉','🎊','🎈','🎁','🏆','🏅','🥇','🥈','🥉','⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸️','🥌','🎿','⛷️','🏂','🪂','🏋️','🤼','🤸','🤺','⛹️','🤾','🏌️','🏇','🧘','🏊','🤽','🚣','🧗','🚴','🚵','🎖️','🎗️','🎫','🎟️','🎪','🎭','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🪘','🎷','🎺','🪗','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🎰','🧩'];
+const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '☺️', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾', '🙈', '🙉', '🙊', '💋', '💌', '💘', '💝', '💖', '💗', '💓', '💞', '💕', '💟', '❣️', '💔', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎', '🖤', '🤍', '💯', '💢', '💥', '💫', '💦', '💨', '🕳️', '💬', '👁️‍🗨️', '🗨️', '🗯️', '💭', '💤', '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄', '🎂', '🎉', '🎊', '🎈', '🎁', '🏆', '🏅', '🥇', '🥈', '🥉', '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛼', '🛷', '⛸️', '🥌', '🎿', '⛷️', '🏂', '🪂', '🏋️', '🤼', '🤸', '🤺', '⛹️', '🤾', '🏌️', '🏇', '🧘', '🏊', '🤽', '🚣', '🧗', '🚴', '🚵', '🎖️', '🎗️', '🎫', '🎟️', '🎪', '🎭', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🪘', '🎷', '🎺', '🪗', '🎸', '🪕', '🎻', '🎲', '♟️', '🎯', '🎳', '🎮', '🎰', '🧩'];
 
 const emojiPicker = $('emoji-picker');
 const emojiBtn = $('emoji-btn');
@@ -1003,10 +1020,10 @@ function displayGifs(gifs) {
 socket.on('message_edited', ({ messageId, content, edited }) => {
   const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
   if (!msgEl) return;
-  
+
   const contentEl = msgEl.querySelector('.msg-content');
   const timeEl = msgEl.querySelector('.msg-time');
-  
+
   if (contentEl) contentEl.textContent = content;
   if (timeEl && edited && !msgEl.querySelector('.msg-edited')) {
     timeEl.insertAdjacentHTML('afterend', '<span class="msg-edited">(modifié)</span>');
