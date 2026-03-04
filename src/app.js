@@ -88,16 +88,21 @@ async function loadAdminUsers() {
       const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
       
       div.innerHTML = `
-        <div class="member-avatar">
-          ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
-        </div>
-        <div class="admin-user-info">
-          <strong>${user.username}</strong>
-        </div>
-        <div class="admin-user-actions">
-          <button class="admin-btn danger" onclick="deleteUser('${user.username}')">Supprimer</button>
-        </div>
-      `;
+  <div class="member-avatar">
+    ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
+  </div>
+  <div class="admin-user-info">
+    <strong>${user.username}</strong>
+    <select class="role-select" onchange="changeRole('${user.username}', this.value)">
+      <option value="user" ${user.role === 'user' || !user.role ? 'selected' : ''}>Utilisateur</option>
+      <option value="moderator" ${user.role === 'moderator' ? 'selected' : ''}>Modérateur</option>
+      <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+    </select>
+  </div>
+  <div class="admin-user-actions">
+    <button class="admin-btn danger" onclick="deleteUser('${user.username}')">Supprimer</button>
+  </div>
+`;
       
       listEl.appendChild(div);
     });
@@ -123,6 +128,28 @@ window.deleteUser = async function(username) {
     }
   } catch (err) {
     console.error('Erreur suppression:', err);
+    alert('Erreur serveur');
+  }
+};
+
+window.changeRole = async function(username, newRole) {
+  try {
+    const res = await fetch(SERVER_URL + '/admin/change-role', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + myToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, role: newRole })
+    });
+    
+    if (res.ok) {
+      console.log(`Rôle de ${username} changé en ${newRole}`);
+    } else {
+      alert('Erreur lors du changement de rôle');
+    }
+  } catch (err) {
+    console.error('Erreur changement rôle:', err);
     alert('Erreur serveur');
   }
 };

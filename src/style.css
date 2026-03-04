@@ -743,3 +743,19 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .admin-btn.warning:hover {
   background: #e69517;
 }
+
+/* Dropdown rôles */
+.role-select {
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: var(--bg4);
+  color: var(--t2);
+  border: 1px solid var(--bg1);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.role-select:hover {
+  background: var(--bg3);
+}
