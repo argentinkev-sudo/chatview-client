@@ -872,3 +872,56 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
   background: var(--bg4);
   transform: scale(1.2);
 }
+
+/* Mentions */
+.mention {
+  color: #1ac723;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mention:hover {
+  text-decoration: underline;
+}
+
+/* Autocomplete mentions */
+.mention-autocomplete {
+  position: absolute;
+  bottom: 60px;
+  left: 16px;
+  right: 16px;
+  background: var(--bg2);
+  border: 2px solid var(--bg4);
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+}
+
+.mention-suggestion {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background .2s;
+}
+
+.mention-suggestion:hover,
+.mention-suggestion.selected {
+  background: var(--bg4);
+}
+
+.mention-suggestion .member-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+/* Mention de moi */
+.message.mentioned-me {
+  background: rgba(255, 215, 0, 0.1);
+  border-left: 3px solid #ffd700;
+  padding-left: 8px;
+}

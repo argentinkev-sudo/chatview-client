@@ -8,9 +8,11 @@ let peers = {}, localStream = null, screenStream = null;
 const $ = id => document.getElementById(id);
 // Notifications
 let unreadCounts = {}; // { channelId: count }
+let onlineUsers = {};
 const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
 const joinSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 const leaveSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3');
+const mentionSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
 
 // AUTH
 let isRegistering = false;
@@ -460,13 +462,19 @@ function connectSocket() {
     }
   });
   socket.on('channel_history', msgs => { $('messages-area').innerHTML = ''; msgs.forEach(addMessage); scrollBottom(); });
-  socket.on('online_users', async (onlineUsers) => {
-    // Récupérer tous les utilisateurs depuis le serveur
-    const res = await fetch(SERVER_URL + '/all-users');
-    const allUsers = await res.json();
+  socket.on('online_users', async (usersFromServer) => {
+  // Stocker les users en ligne globalement
+  onlineUsers = {};
+  usersFromServer.forEach(u => {
+    onlineUsers[u.username] = u;
+  });
+  
+  // Récupérer tous les utilisateurs depuis le serveur
+  const res = await fetch(SERVER_URL + '/all-users');
+  const allUsers = await res.json();
 
     // Séparer en ligne / hors ligne
-    const onlineUsernames = onlineUsers.map(u => u.username);
+    const onlineUsernames = usersFromServer.map(u => u.username);
     const online = allUsers.filter(u => onlineUsernames.includes(u.username));
     const offline = allUsers.filter(u => !onlineUsernames.includes(u.username));
 
@@ -733,12 +741,20 @@ function formatMessageDate(timestamp) {
   return `${day} ${month} à ${time}`;
 }
 
+function formatMentions(text) {
+  // Remplacer @username par un span coloré
+  return text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+}
+
 // MESSAGES
 function addMessage(msg) {
 
   const div = document.createElement('div');
   div.className = 'message';
   div.setAttribute('data-msg-id', msg._id);
+  if (msg.content && msg.content.includes('@' + myUsername)) {
+  div.classList.add('mentioned-me');
+}
   let content = '';
   if (msg.type === 'image') {
     content = `<img class="msg-image" src="${SERVER_URL}${msg.fileUrl}" onclick="window.open('${SERVER_URL}${msg.fileUrl}')" />`;
@@ -749,7 +765,7 @@ function addMessage(msg) {
     if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {
       content = `<img class="msg-image" src="${msg.content}" onclick="window.open('${msg.content}')" />`;
     } else {
-      content = `<div class="msg-content">${escapeHtml(msg.content)}</div>`;
+      content = `<div class="msg-content">${formatMentions(escapeHtml(msg.content))}</div>`;
     }
   }
   const isOwnMessage = msg.username === myUsername;
@@ -789,6 +805,16 @@ function addMessage(msg) {
 `;
   $('messages-area').appendChild(div);
   scrollBottom();
+  // Détecter si je suis mentionné
+if (msg.content && msg.content.includes('@' + myUsername) && msg.username !== myUsername) {
+  mentionSound.play().catch(() => {});
+  
+  // Badge rouge si message pas dans le salon actuel
+  if (msg.channelId !== currentChannel) {
+    unreadCounts[msg.channelId] = (unreadCounts[msg.channelId] || 0) + 1;
+    updateChannelBadges();
+  }
+}
 }
 
 function scrollBottom() { $('messages-area').scrollTop = $('messages-area').scrollHeight; }
@@ -802,6 +828,85 @@ function sendMessage() {
   console.log('Envoi message, currentChannel:', currentChannel, 'content:', content); // ← DEBUG
   socket.emit('send_message', { channelId: currentChannel, content, type: 'text' });
   $('msg-input').value = '';
+}
+
+// Autocomplete mentions
+let mentionIndex = -1;
+let filteredUsers = [];
+
+$('msg-input').addEventListener('input', (e) => {
+  const text = e.target.value;
+  const cursorPos = e.target.selectionStart;
+  
+  // Chercher si on tape @ suivi de lettres
+  const beforeCursor = text.substring(0, cursorPos);
+  const match = beforeCursor.match(/@(\w*)$/);
+  
+  if (match) {
+    const query = match[1].toLowerCase();
+    
+    // Filtrer les utilisateurs en ligne
+    filteredUsers = Object.values(onlineUsers)
+      .filter(u => u.username.toLowerCase().startsWith(query))
+      .slice(0, 5);
+    
+    if (filteredUsers.length > 0) {
+      showMentionAutocomplete(filteredUsers);
+      mentionIndex = 0;
+    } else {
+      hideMentionAutocomplete();
+    }
+  } else {
+    hideMentionAutocomplete();
+  }
+});
+
+function showMentionAutocomplete(users) {
+  const autocomplete = $('mention-autocomplete');
+  autocomplete.innerHTML = '';
+  autocomplete.classList.remove('hidden');
+  
+  users.forEach((user, index) => {
+    const div = document.createElement('div');
+    div.className = 'mention-suggestion' + (index === mentionIndex ? ' selected' : '');
+    
+    const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
+    
+    div.innerHTML = `
+      <div class="member-avatar">
+        ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
+      </div>
+      <span>${user.username}</span>
+    `;
+    
+    div.onclick = () => insertMention(user.username);
+    autocomplete.appendChild(div);
+  });
+}
+
+function hideMentionAutocomplete() {
+  $('mention-autocomplete').classList.add('hidden');
+  mentionIndex = -1;
+}
+
+function insertMention(username) {
+  const input = $('msg-input');
+  const text = input.value;
+  const cursorPos = input.selectionStart;
+  
+  // Trouver le début du @
+  const beforeCursor = text.substring(0, cursorPos);
+  const match = beforeCursor.match(/@(\w*)$/);
+  
+  if (match) {
+    const startPos = cursorPos - match[0].length;
+    const newText = text.substring(0, startPos) + '@' + username + ' ' + text.substring(cursorPos);
+    input.value = newText;
+    input.focus();
+    input.selectionStart = input.selectionEnd = startPos + username.length + 2;
+  }
+  
+  hideMentionAutocomplete();
 }
 
 // FICHIERS
