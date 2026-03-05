@@ -171,6 +171,88 @@ window.changeRole = async function (username, newRole) {
   }
 };
 
+// Réactions
+window.toggleReactionPicker = function(messageId, event) {
+  event.stopPropagation();
+  
+  // Fermer les autres pickers
+  document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
+  
+  const picker = document.createElement('div');
+  picker.className = 'reaction-picker';
+  picker.innerHTML = `
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '👍')">👍</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '❤️')">❤️</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '😂')">😂</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '🔥')">🔥</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '👏')">👏</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '😊')">😊</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '🤩')">🤩</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '🤔')">🤔</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '😁')">😁</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '😅')">😅</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '🤣')">🤣</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '😱')">😱</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '👌')">👌</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '💩')">💩</button>
+  <button class="emoji-btn" onclick="addReaction('${messageId}', '💪')">💪</button>
+`;
+
+  
+  
+  const btn = event.target;
+  btn.parentElement.appendChild(picker);
+  
+  // Fermer au clic extérieur
+  setTimeout(() => {
+    document.addEventListener('click', function closePicker(e) {
+      if (!picker.contains(e.target)) {
+        picker.remove();
+        document.removeEventListener('click', closePicker);
+      }
+    });
+  }, 10);
+};
+
+window.addReaction = async function(messageId, emoji) {
+  document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
+  
+  try {
+    await fetch(SERVER_URL + '/add-reaction', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + myToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ messageId, emoji })
+    });
+  } catch (err) {
+    console.error('Erreur ajout réaction:', err);
+  }
+};
+
+window.toggleReaction = async function(messageId, emoji) {
+  try {
+    // Vérifier si l'utilisateur a déjà réagi avec cet emoji
+    const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+    const reactionBtn = Array.from(msgEl.querySelectorAll('.reaction-btn')).find(btn => btn.textContent.trim().startsWith(emoji));
+    
+    // TODO: vérifier si mon nom est dans la liste des users
+    // Pour l'instant on toggle toujours (ajouter si pas là, retirer sinon)
+    
+    await fetch(SERVER_URL + '/remove-reaction', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + myToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ messageId, emoji })
+    });
+  } catch (err) {
+    console.error('Erreur toggle réaction:', err);
+  }
+};
+
 $('auth-password').onkeydown = e => { if (e.key === 'Enter') $('auth-submit').click(); };
 $('logout-btn').onclick = () => { localStorage.clear(); location.reload(); };
 
@@ -406,7 +488,7 @@ function connectSocket() {
         <div class="member-avatar">
           ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
         </div>
-        <span>${user.username}</span>
+        <span class="username-role role-${user.role || 'user'}">${user.username}</span>
       `;
         $('members-list').appendChild(el);
       });
@@ -447,6 +529,29 @@ function connectSocket() {
     if (box) box.remove();
     leaveSound.play().catch(() => { });
   });
+  socket.on('reaction_updated', ({ messageId, reactions }) => {
+  const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+  if (!msgEl) return;
+  
+  const msgBody = msgEl.querySelector('.msg-body');
+  
+  // Supprimer l'ancien bloc de réactions s'il existe
+  const oldReactions = msgBody.querySelector('.msg-reactions');
+  if (oldReactions) oldReactions.remove();
+  
+  // Ajouter les nouvelles réactions
+  if (reactions && reactions.length > 0) {
+    const reactionsDiv = document.createElement('div');
+    reactionsDiv.className = 'msg-reactions';
+    reactionsDiv.innerHTML = reactions.map(r => `
+      <button class="reaction-btn" onclick="toggleReaction('${messageId}', '${r.emoji}')">
+        ${r.emoji} <span class="reaction-count">${r.users.length}</span>
+      </button>
+    `).join('');
+    
+    msgBody.appendChild(reactionsDiv);
+  }
+});
 }
 
 // CHANNELS
@@ -656,17 +761,31 @@ function addMessage(msg) {
   </div>
   <div class="msg-body">
     <div class="msg-header">
-      <span class="msg-username">${escapeHtml(msg.username)}</span>
+      <span class="msg-username role-${msg.role || 'user'}">${escapeHtml(msg.username)}</span>
       <span class="msg-time">${formatMessageDate(msg.timestamp)}</span>${editedLabel}
     </div>
     ${content}
+    ${msg.reactions && msg.reactions.length > 0 ? `
+  <div class="msg-reactions">
+    ${msg.reactions.map(r => `
+      <button class="reaction-btn" onclick="toggleReaction('${msg._id}', '${r.emoji}')">
+        ${r.emoji} <span class="reaction-count">${r.users.length}</span>
+      </button>
+    `).join('')}
+  </div>
+` : ''}
   </div>
   ${(isOwnMessage || isAdmin || myRole === 'moderator') ? `
   <div class="msg-actions">
+    <button class="msg-action-btn" onclick="toggleReactionPicker('${msg._id}', event)" title="Réagir">➕</button>
     ${isOwnMessage ? `<button class="msg-action-btn" onmousedown="event.preventDefault()" onclick="editMessage('${msg._id}')">✏️</button>` : ''}
     <button class="msg-action-btn" onmousedown="event.preventDefault()" onclick="deleteMessage('${msg._id}', ${isAdmin || myRole === 'moderator'})">🗑️</button>
   </div>
-` : ''}
+` : `
+  <div class="msg-actions">
+    <button class="msg-action-btn" onclick="toggleReactionPicker('${msg._id}', event)" title="Réagir">➕</button>
+  </div>
+`}
 `;
   $('messages-area').appendChild(div);
   scrollBottom();

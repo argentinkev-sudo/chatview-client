@@ -784,3 +784,91 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
   background: rgba(128, 132, 142, 0.2);
   color: #80848e;
 }
+
+/* Couleurs selon le rôle */
+.msg-username.role-admin {
+  color: #ffd700 !important; /* Jaune doré */
+}
+
+.msg-username.role-moderator {
+  color: #5865f2 !important; /* Bleu */
+}
+
+.msg-username.role-user {
+  color: var(--t1); /* Gris/blanc par défaut */
+}
+
+/* Couleurs membres en ligne */
+.username-role.role-admin {
+  color: #ffd700;
+}
+
+.username-role.role-moderator {
+  color: #5865f2;
+}
+
+.username-role.role-user {
+  color: var(--t1);
+}
+
+/* Réactions */
+.msg-reactions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.reaction-btn {
+  background: var(--bg4);
+  border: 1px solid var(--bg1);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all .2s;
+}
+
+.reaction-btn:hover {
+  background: var(--bg3);
+  border-color: var(--accent);
+}
+
+.reaction-count {
+  font-size: 11px;
+  color: var(--t3);
+  font-weight: 600;
+}
+
+.reaction-picker {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: var(--bg2);
+  border: 2px solid var(--bg4);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.emoji-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all .2s;
+}
+
+.emoji-btn:hover {
+  background: var(--bg4);
+  transform: scale(1.2);
+}
