@@ -1,12 +1,13 @@
 {
   "name": "chatapp-client",
-  "version": "2.1.0",
+  "version": "2.1.3",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win --x64"
   },
   "dependencies": {
+    "electron-updater": "^6.8.3",
     "socket.io-client": "^4.7.2"
   },
   "devDependencies": {
@@ -16,6 +17,11 @@
   "build": {
     "appId": "com.chatapp.app",
     "productName": "ChatView",
+    "publish": {
+    "provider": "github",
+    "owner": "argentinkev-sudo",
+    "repo": "chatview-client"
+    },
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"

@@ -1,5 +1,10 @@
 const { app, BrowserWindow, session, ipcMain, desktopCapturer } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
+
+// Configuration auto-updater
+autoUpdater.autoDownload = true;  // Ne pas télécharger automatiquement
+autoUpdater.autoInstallOnAppQuit = true;  // Installer au redémarrage
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -21,6 +26,26 @@ function createWindow() {
   win.once('ready-to-show', () => win.show());
 }
 
+
+// Événements auto-updater
+autoUpdater.on('update-available', (info) => {
+  console.log('Mise à jour disponible:', info.version);
+  // TODO: Afficher une notification à l'utilisateur
+});
+
+autoUpdater.on('update-not-available', () => {
+  console.log('Application à jour');
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  console.log(`Téléchargement: ${Math.round(progress.percent)}%`);
+});
+
+autoUpdater.on('update-downloaded', () => {
+  console.log('Mise à jour téléchargée, redémarrage...');
+  autoUpdater.quitAndInstall();
+});
+
 // Gérer la demande de sources d'écran
 ipcMain.handle('get-desktop-sources', async () => {
   const sources = await desktopCapturer.getSources({ 
@@ -30,12 +55,17 @@ ipcMain.handle('get-desktop-sources', async () => {
   return sources;
 });
 
-app.whenReady().then(() => {
+app.on('ready', () => {
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     if (['media', 'microphone', 'camera', 'desktopCapture'].includes(permission)) return callback(true);
     callback(false);
   });
   createWindow();
+  
+  // Vérifier les updates 5 secondes après le lancement
+  setTimeout(() => {
+    autoUpdater.checkForUpdates();
+  }, 5000);
 });
 
 app.on('window-all-closed', () => {
