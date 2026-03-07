@@ -572,28 +572,45 @@ socket.on('pong', () => {
 });
 }
 
+
 // CHANNELS
-async function loadChannels() {
-  const res = await fetch(SERVER_URL + '/channels');
-  const data = await res.json();
-  $('text-channels').innerHTML = '';
-  $('voice-channels').innerHTML = '';
-  data.text.forEach(ch => {
-    const el = document.createElement('div');
-    el.className = 'channel-item';
-    el.id = 'ch-' + ch.id;
-    el.innerHTML = `<span style="color:var(--t3);font-size:16px">#</span>${ch.name}`;
-    el.onclick = () => joinTextChannel(ch);
-    $('text-channels').appendChild(el);
-  });
-  data.voice.forEach(ch => {
-    const el = document.createElement('div');
-    el.className = 'channel-item';
-    el.id = 'ch-' + ch.id;
-    el.innerHTML = ch.name;
-    el.onclick = () => joinVoiceChannel(ch);
-    $('voice-channels').appendChild(el);
-  });
+async function loadChannels(retries = 3) {
+  try {
+    const res = await fetch(SERVER_URL + '/channels');
+    if (!res.ok) throw new Error('Erreur serveur');
+    
+    const data = await res.json();
+    $('text-channels').innerHTML = '';
+    $('voice-channels').innerHTML = '';
+    
+    data.text.forEach(ch => {
+      const el = document.createElement('div');
+      el.className = 'channel-item';
+      el.id = 'ch-' + ch.id;
+      el.innerHTML = `<span style="color:var(--t3);font-size:16px">#</span>${ch.name}`;
+      el.onclick = () => joinTextChannel(ch);
+      $('text-channels').appendChild(el);
+    });
+    
+    data.voice.forEach(ch => {
+      const el = document.createElement('div');
+      el.className = 'channel-item';
+      el.id = 'ch-' + ch.id;
+      el.innerHTML = ch.name;
+      el.onclick = () => joinVoiceChannel(ch);
+      $('voice-channels').appendChild(el);
+    });
+  } catch (err) {
+    console.error('Erreur chargement salons:', err);
+    
+    // Retry si échec et qu'il reste des tentatives
+    if (retries > 0) {
+      console.log(`Nouvelle tentative dans 2 secondes... (${retries} restantes)`);
+      setTimeout(() => loadChannels(retries - 1), 2000);
+    } else {
+      alert('Impossible de charger les salons. Le serveur est peut-être en cours de démarrage. Actualisez la page dans quelques secondes.');
+    }
+  }
 }
 
 function updateVoiceRooms(state) {
