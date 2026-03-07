@@ -560,6 +560,16 @@ function connectSocket() {
     msgBody.appendChild(reactionsDiv);
   }
 });
+// Keep-alive ping
+setInterval(() => {
+  if (socket && socket.connected) {
+    socket.emit('ping');
+  }
+}, 30000); // Toutes les 30 secondes
+
+socket.on('pong', () => {
+  // Le serveur a bien répondu, connexion active
+});
 }
 
 // CHANNELS
@@ -757,10 +767,12 @@ function addMessage(msg) {
 }
   let content = '';
   if (msg.type === 'image') {
-    content = `<img class="msg-image" src="${SERVER_URL}${msg.fileUrl}" onclick="window.open('${SERVER_URL}${msg.fileUrl}')" />`;
-  } else if (msg.type === 'file') {
-    content = `<a class="msg-file" href="${SERVER_URL}${msg.fileUrl}" target="_blank">📎 ${msg.fileName}</a>`;
-  } else {
+  const imageUrl = msg.fileUrl.startsWith('http') ? msg.fileUrl : SERVER_URL + msg.fileUrl;
+  content = `<img class="msg-image" src="${imageUrl}" onclick="window.open('${imageUrl}')" />`;
+} else if (msg.type === 'file') {
+  const fileUrl = msg.fileUrl.startsWith('http') ? msg.fileUrl : SERVER_URL + msg.fileUrl;
+  content = `<a class="msg-file" href="${fileUrl}" target="_blank">📎 ${msg.fileName}</a>`;
+} else {
     // Détection auto des URLs d'images/GIFs
     if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {
       content = `<img class="msg-image" src="${msg.content}" onclick="window.open('${msg.content}')" />`;
@@ -1087,21 +1099,36 @@ async function createPeer(peerId, initiator, username) {
     const hasVideo = stream.getVideoTracks().length > 0;
 
     if (hasVideo) {
-      // Supprimer l'ancienne vidéo s'il y en a une
-      const oldVideo = document.getElementById('remote-video-' + peerId);
-      if (oldVideo) oldVideo.remove();
+  // Supprimer l'ancien container s'il existe
+  const oldBox = document.getElementById('stream-' + peerId);
+  if (oldBox) oldBox.remove();
 
-      // Créer la nouvelle vidéo
-      const video = document.createElement('video');
-      video.id = 'remote-video-' + peerId;
-      video.className = 'remote-video';
-      video.autoplay = true;
-      video.srcObject = stream;
-      $('remote-streams').appendChild(video);
+  // Créer un container pour la vidéo + bouton fermer
+  const box = document.createElement('div');
+  box.id = 'stream-' + peerId;
+  box.className = 'stream-box';
+  
+  const video = document.createElement('video');
+  video.className = 'remote-video';
+  video.autoplay = true;
+  video.srcObject = stream;
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'stream-close-btn';
+  closeBtn.textContent = '✕';
+  closeBtn.onclick = () => box.remove();
+  
+  video.onclick = () => {
+    video.classList.toggle('video-enlarged');
+  };
+  
+  box.appendChild(video);
+  box.appendChild(closeBtn);
+  $('remote-streams').appendChild(box);
+  
+  // Détecter quand le stream s'arrête
+  stream.getVideoTracks()[0].onended = () => box.remove();
 
-      video.onclick = () => {
-        video.classList.toggle('video-enlarged');
-      };
     } else {
       // Audio seulement
       const audio = document.createElement('audio');
