@@ -1280,10 +1280,55 @@ async function createPeer(peerId, initiator, username) {
       const savedVolume = userVolumes[peerId] || 100;
       audio.volume = Math.min(savedVolume / 100, 1.0);
 
+      // Analyseur audio pour détection de parole
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+const analyser = audioContext.createAnalyser();
+const source = audioContext.createMediaStreamSource(stream);
+
+analyser.fftSize = 256;
+const bufferLength = analyser.frequencyBinCount;
+const dataArray = new Uint8Array(bufferLength);
+
+source.connect(analyser);
+
+// Surveiller le niveau audio
+const checkAudioLevel = () => {
+  analyser.getByteFrequencyData(dataArray);
+  const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+  
+  // Seuil de détection (ajustable)
+  const isSpeaking = average > 15;
+  
+  // Mettre à jour l'indicateur visuel dans la sidebar
+  updateVoiceIndicator(peerId, isSpeaking);
+  
+  requestAnimationFrame(checkAudioLevel);
+};
+
+checkAudioLevel();
+
     }
   });
   peer.on('error', e => console.error('Peer error:', e));
   peers[peerId] = { peer, username };
+}
+
+function updateVoiceIndicator(peerId, isSpeaking) {
+  // Trouver l'avatar de cet utilisateur dans tous les salons vocaux
+  const username = peers[peerId]?.username;
+  if (!username) return;
+  
+  // Chercher tous les avatars de cet utilisateur dans la sidebar
+  document.querySelectorAll('.voice-user-avatar-small').forEach(avatar => {
+    const parent = avatar.closest('.voice-user-item-sidebar');
+    if (parent && parent.textContent.includes(username)) {
+      if (isSpeaking) {
+        avatar.classList.add('speaking');
+      } else {
+        avatar.classList.remove('speaking');
+      }
+    }
+  });
 }
 
 $('members-btn').onclick = () => {
