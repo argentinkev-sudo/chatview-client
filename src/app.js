@@ -268,6 +268,12 @@ if (savedToken && savedUsername) {
   startApp();
 }
 
+// Paramètres audio globaux
+let micGain = 1.0;
+let outputGain = 1.0;
+const savedMicVolume = localStorage.getItem('micVolume') || 100;
+const savedOutputVolume = localStorage.getItem('outputVolume') || 100;
+
 function startApp() {
   $('auth-screen').classList.add('hidden');
   $('app').classList.remove('hidden');
@@ -281,7 +287,41 @@ function startApp() {
  $('admin-btn').onclick = () => {
   $('admin-panel').classList.remove('hidden');
   
-  // Afficher/cacher les sections admin
+  // Initialiser les sliders audio
+  $('mic-volume').value = savedMicVolume;
+  $('output-volume').value = savedOutputVolume;
+  $('mic-volume-value').textContent = savedMicVolume + '%';
+  $('output-volume-value').textContent = savedOutputVolume + '%';
+  
+  // Volume micro
+  $('mic-volume').oninput = (e) => {
+    const value = e.target.value;
+    $('mic-volume-value').textContent = value + '%';
+    micGain = value / 100;
+    localStorage.setItem('micVolume', value);
+    
+    if (localStream) {
+      localStream.getAudioTracks().forEach(track => {
+        track.applyConstraints({ 
+          advanced: [{ echoCancellation: true, noiseSuppression: true }]
+        });
+      });
+    }
+  };
+  
+  // Volume sortie
+  $('output-volume').oninput = (e) => {
+    const value = e.target.value;
+    $('output-volume-value').textContent = value + '%';
+    outputGain = value / 100;
+    localStorage.setItem('outputVolume', value);
+    
+    document.querySelectorAll('.remote-audio').forEach(audio => {
+      audio.volume = Math.min(outputGain, 1.0);
+    });
+  };
+  
+  // Afficher/cacher sections admin
   if (isAdmin) {
     $('admin-users-section').style.display = 'block';
     $('admin-messages-section').style.display = 'block';
@@ -296,51 +336,6 @@ function startApp() {
   };
 };
 
-// Paramètres audio
-let micGain = 1.0;
-let outputGain = 1.0;
-
-// Charger les paramètres sauvegardés
-const savedMicVolume = localStorage.getItem('micVolume') || 100;
-const savedOutputVolume = localStorage.getItem('outputVolume') || 100;
-
-$('mic-volume').value = savedMicVolume;
-$('output-volume').value = savedOutputVolume;
-$('mic-volume-value').textContent = savedMicVolume + '%';
-$('output-volume-value').textContent = savedOutputVolume + '%';
-
-micGain = savedMicVolume / 100;
-outputGain = savedOutputVolume / 100;
-
-// Volume micro
-$('mic-volume').oninput = (e) => {
-  const value = e.target.value;
-  $('mic-volume-value').textContent = value + '%';
-  micGain = value / 100;
-  localStorage.setItem('micVolume', value);
-  
-  // Appliquer au stream local
-  if (localStream) {
-    localStream.getAudioTracks().forEach(track => {
-      track.applyConstraints({ 
-        advanced: [{ echoCancellation: true, noiseSuppression: true }]
-      });
-    });
-  }
-};
-
-// Volume sortie
-$('output-volume').oninput = (e) => {
-  const value = e.target.value;
-  $('output-volume-value').textContent = value + '%';
-  outputGain = value / 100;
-  localStorage.setItem('outputVolume', value);
-  
-  // Appliquer à tous les audios distants
-  document.querySelectorAll('.remote-audio').forEach(audio => {
-    audio.volume = Math.min(outputGain, 1.0);
-  });
-};
 
   // Définir les fonctions d'édition/suppression
   window.editMessage = function (messageId) {
