@@ -74,9 +74,8 @@ async function checkAdmin() {
     const me = users.find(u => u.username === myUsername);
     myRole = me?.role || 'user';
 
-    if (isAdmin) {
-      $('admin-btn').classList.remove('hidden');
-    }
+    // Tout le monde voit le bouton paramètres
+$('admin-btn').classList.remove('hidden');
   } catch (err) {
     console.error('Erreur vérification admin:', err);
   }
@@ -279,15 +278,69 @@ function startApp() {
   loadChannels();
   checkAdmin();
 
-  $('admin-btn').onclick = () => {
-    $('admin-panel').classList.remove('hidden');
+ $('admin-btn').onclick = () => {
+  $('admin-panel').classList.remove('hidden');
+  
+  // Afficher/cacher les sections admin
+  if (isAdmin) {
+    $('admin-users-section').style.display = 'block';
+    $('admin-messages-section').style.display = 'block';
     loadAdminUsers();
+  } else {
+    $('admin-users-section').style.display = 'none';
+    $('admin-messages-section').style.display = 'none';
+  }
 
-    // Attacher l'event listener ici
-    $('admin-close-btn').onclick = () => {
-      $('admin-panel').classList.add('hidden');
-    };
+  $('admin-close-btn').onclick = () => {
+    $('admin-panel').classList.add('hidden');
   };
+};
+
+// Paramètres audio
+let micGain = 1.0;
+let outputGain = 1.0;
+
+// Charger les paramètres sauvegardés
+const savedMicVolume = localStorage.getItem('micVolume') || 100;
+const savedOutputVolume = localStorage.getItem('outputVolume') || 100;
+
+$('mic-volume').value = savedMicVolume;
+$('output-volume').value = savedOutputVolume;
+$('mic-volume-value').textContent = savedMicVolume + '%';
+$('output-volume-value').textContent = savedOutputVolume + '%';
+
+micGain = savedMicVolume / 100;
+outputGain = savedOutputVolume / 100;
+
+// Volume micro
+$('mic-volume').oninput = (e) => {
+  const value = e.target.value;
+  $('mic-volume-value').textContent = value + '%';
+  micGain = value / 100;
+  localStorage.setItem('micVolume', value);
+  
+  // Appliquer au stream local
+  if (localStream) {
+    localStream.getAudioTracks().forEach(track => {
+      track.applyConstraints({ 
+        advanced: [{ echoCancellation: true, noiseSuppression: true }]
+      });
+    });
+  }
+};
+
+// Volume sortie
+$('output-volume').oninput = (e) => {
+  const value = e.target.value;
+  $('output-volume-value').textContent = value + '%';
+  outputGain = value / 100;
+  localStorage.setItem('outputVolume', value);
+  
+  // Appliquer à tous les audios distants
+  document.querySelectorAll('.remote-audio').forEach(audio => {
+    audio.volume = Math.min(outputGain, 1.0);
+  });
+};
 
   // Définir les fonctions d'édition/suppression
   window.editMessage = function (messageId) {
@@ -621,11 +674,27 @@ function updateVoiceRooms(state) {
     if (sub && sub.classList.contains('channel-voice-users')) sub.remove();
 
     if (usersList.length > 0) {
-      const s = document.createElement('div');
-      s.className = 'channel-voice-users';
-      s.textContent = usersList.map(u => u.username || u).join(', ');
-      el.after(s);
-    }
+  const container = document.createElement('div');
+  container.className = 'channel-voice-users';
+  
+  usersList.forEach(u => {
+    const userDiv = document.createElement('div');
+    userDiv.className = 'voice-user-item-sidebar';
+    
+    const avatarUrl = u.avatar ? (u.avatar.startsWith('http') ? u.avatar : SERVER_URL + u.avatar) : null;
+    
+    userDiv.innerHTML = `
+      <div class="voice-user-avatar-small">
+        ${avatarUrl ? `<img src="${avatarUrl}" alt="${u.username}">` : (u.username || 'U')[0].toUpperCase()}
+      </div>
+      <span class="voice-user-name">${u.username || 'Utilisateur'}</span>
+    `;
+    
+    container.appendChild(userDiv);
+  });
+  
+  el.after(container);
+}
 
     if (cId === currentVoiceChannel) {
       const usersEl = $('voice-bar-users');
@@ -773,6 +842,21 @@ function formatMentions(text) {
   return text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
 }
 
+function downloadFile(url, filename) {
+  fetch(url)
+    .then(response => response.blob())
+    .then(blob => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename || 'fichier';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    })
+    .catch(err => console.error('Erreur téléchargement:', err));
+}
+
+window.downloadFile = downloadFile;
+
 // MESSAGES
 function addMessage(msg) {
 
@@ -785,10 +869,21 @@ function addMessage(msg) {
   let content = '';
   if (msg.type === 'image') {
   const imageUrl = msg.fileUrl.startsWith('http') ? msg.fileUrl : SERVER_URL + msg.fileUrl;
-  content = `<img class="msg-image" src="${imageUrl}" onclick="window.open('${imageUrl}')" />`;
+  content = `
+    <div class="msg-file-container">
+      <img class="msg-image" src="${imageUrl}" onclick="window.open('${imageUrl}')" />
+     <button class="file-download-btn" onclick="downloadFile('${imageUrl}')" title="Télécharger">📥</button>
+    </div>
+  `;
 } else if (msg.type === 'file') {
   const fileUrl = msg.fileUrl.startsWith('http') ? msg.fileUrl : SERVER_URL + msg.fileUrl;
-  content = `<a class="msg-file" href="${fileUrl}" target="_blank">📎 ${msg.fileName}</a>`;
+  content = `
+    <div class="msg-file-container">
+      <a class="msg-file" href="${fileUrl}" target="_blank">📎 ${msg.fileName}</a>
+     <button class="file-download-btn" onclick="downloadFile('${fileUrl}', '${msg.fileName}')" title="Télécharger">📥</button>
+    </div>
+  `;
+
 } else {
     // Détection auto des URLs d'images/GIFs
     if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {

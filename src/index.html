@@ -31,7 +31,7 @@
   </div>
 
   <div class="sidebar">
-    <div class="sidebar-header">ChatView v2.1.4</div>
+    <div class="sidebar-header">ChatView v2.1.5</div>
     <div class="channels-scroll">
       <div class="channel-group-title">SALONS TEXTUELS</div>
       <div id="text-channels"></div>
@@ -46,7 +46,7 @@
         <div class="user-name" id="my-username"></div>
         <div class="user-status">🟢 En ligne</div>
       </div>
-      <button class="icon-btn hidden" id="admin-btn" title="Panel Admin">⚙️</button>
+      <button class="icon-btn" id="admin-btn" title="Paramètres">⚙️</button>
       <button class="icon-btn" id="logout-btn" title="Déconnexion">⏻</button>
     </div>
   </div>
@@ -148,19 +148,35 @@
 <div id="admin-panel" class="modal hidden">
   <div class="admin-panel-content">
     <div class="admin-panel-header">
-      <h2>⚙️ Panel Administrateur</h2>
+      <h2>⚙️ Paramètres</h2>
       <button class="modal-close-btn" id="admin-close-btn">✕</button>
     </div>
-    
+
     <div class="admin-section">
-      <h3>Utilisateurs</h3>
-      <div id="admin-users-list"></div>
+  <h3>🔊 Paramètres Audio</h3>
+  <div class="audio-settings">
+    <div class="audio-setting-item">
+      <label>🎤 Volume Microphone</label>
+      <input type="range" id="mic-volume" min="0" max="200" value="100">
+      <span id="mic-volume-value">100%</span>
     </div>
+    <div class="audio-setting-item">
+      <label>🔊 Volume Sortie Globale</label>
+      <input type="range" id="output-volume" min="0" max="200" value="100">
+      <span id="output-volume-value">100%</span>
+    </div>
+  </div>
+</div>
+
+<div class="admin-section" id="admin-users-section">
+  <h3>Utilisateurs</h3>
+  <div id="admin-users-list"></div>
+</div>
     
-    <div class="admin-section">
-      <h3>Messages récents</h3>
-      <div id="admin-messages-list"></div>
-    </div>
+    <div class="admin-section" id="admin-messages-section">
+  <h3>Messages récents</h3>
+  <div id="admin-messages-list"></div>
+</div>
   </div>
 </div>
 
