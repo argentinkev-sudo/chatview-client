@@ -273,6 +273,7 @@ let micGain = 1.0;
 let outputGain = 1.0;
 const savedMicVolume = localStorage.getItem('micVolume') || 100;
 const savedOutputVolume = localStorage.getItem('outputVolume') || 100;
+let noiseReductionEnabled = localStorage.getItem('noiseReduction') === 'true';
 
 function startApp() {
   $('auth-screen').classList.add('hidden');
@@ -292,6 +293,9 @@ function startApp() {
   $('output-volume').value = savedOutputVolume;
   $('mic-volume-value').textContent = savedMicVolume + '%';
   $('output-volume-value').textContent = savedOutputVolume + '%';
+
+  // Initialiser le toggle réduction de bruit
+$('noise-reduction').checked = noiseReductionEnabled;
   
   // Volume micro
   $('mic-volume').oninput = (e) => {
@@ -320,6 +324,23 @@ function startApp() {
       audio.volume = Math.min(outputGain, 1.0);
     });
   };
+
+  // Réduction de bruit
+$('noise-reduction').onchange = (e) => {
+  noiseReductionEnabled = e.target.checked;
+  localStorage.setItem('noiseReduction', noiseReductionEnabled);
+  
+  // Appliquer au stream local
+  if (localStream) {
+    localStream.getAudioTracks().forEach(track => {
+      track.applyConstraints({
+        echoCancellation: true,
+        noiseSuppression: noiseReductionEnabled,
+        autoGainControl: true
+      });
+    });
+  }
+};
   
   // Afficher/cacher sections admin
   if (isAdmin) {
@@ -1045,7 +1066,16 @@ $('file-input').onchange = async () => {
 // VOIX
 async function joinVoiceChannel(ch) {
   if (currentVoiceChannel) await leaveVoice();
-  try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); }
+  try {
+  localStream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: noiseReductionEnabled,
+      autoGainControl: true
+    },
+    video: false
+  });
+}
   catch { alert('Impossible d\'accéder au micro !'); return; }
   currentVoiceChannel = ch.id;
   document.querySelectorAll('.channel-item').forEach(e => e.classList.remove('active'));
