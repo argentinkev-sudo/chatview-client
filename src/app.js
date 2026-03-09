@@ -1383,19 +1383,15 @@ function updateVoiceIndicator(peerId, isSpeaking) {
         avatar.classList.remove('speaking');
       }
     }
-  });cd 
+  });
 }
 
 function updateMyVoiceIndicator(isSpeaking) {
-  console.log('updateMyVoiceIndicator appelé, isSpeaking:', isSpeaking, 'myUsername:', myUsername);
   
   // Chercher tous les avatars de ton propre utilisateur dans la sidebar
   document.querySelectorAll('.voice-user-avatar-small').forEach(avatar => {
     const parent = avatar.closest('.voice-user-item-sidebar');
-    console.log('Avatar trouvé, textContent:', parent?.textContent);
-    
     if (parent && parent.textContent.includes(myUsername)) {
-      console.log('Match trouvé pour myUsername!');
       if (isSpeaking) {
         avatar.classList.add('speaking');
       } else {
