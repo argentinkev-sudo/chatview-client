@@ -283,6 +283,19 @@ function startApp() {
   updateMyAvatar();
   connectSocket();
   loadChannels();
+  // Rejoindre automatiquement le salon vocal si on y était
+const savedVoiceChannel = localStorage.getItem('currentVoiceChannel');
+if (savedVoiceChannel) {
+  try {
+    const channel = JSON.parse(savedVoiceChannel);
+    // Attendre un peu que tout soit chargé
+    setTimeout(() => {
+      joinVoiceChannel(channel);
+    }, 1000);
+  } catch (err) {
+    console.error('Erreur rejoin vocal:', err);
+  }
+}
   checkAdmin();
 
  $('admin-btn').onclick = () => {
@@ -752,7 +765,12 @@ function updateVoiceRooms(state) {
     }
   });
 }
-
+// Rafraîchissement automatique des salons vocaux toutes les 30 secondes
+setInterval(() => {
+  if (socket && socket.connected) {
+    socket.emit('request_voice_rooms_state');
+  }
+}, 30000);
 
 // Gestion des volumes individuels
 let userVolumes = {}; // { peerId: volume (0-200) }
@@ -1067,17 +1085,19 @@ $('file-input').onchange = async () => {
 async function joinVoiceChannel(ch) {
   if (currentVoiceChannel) await leaveVoice();
   try {
-  localStream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: noiseReductionEnabled,
-      autoGainControl: true
-    },
-    video: false
-  });
-}
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: noiseReductionEnabled,
+        autoGainControl: true
+      },
+      video: false
+    });
+  }
   catch { alert('Impossible d\'accéder au micro !'); return; }
+
   currentVoiceChannel = ch.id;
+  localStorage.setItem('currentVoiceChannel', JSON.stringify({ id: ch.id, name: ch.name }));
   document.querySelectorAll('.channel-item').forEach(e => e.classList.remove('active'));
   document.getElementById('ch-' + ch.id)?.classList.add('active');
   $('voice-bar').classList.remove('hidden');
@@ -1085,6 +1105,33 @@ async function joinVoiceChannel(ch) {
   $('remote-streams').classList.remove('hidden');
   socket.emit('join_voice', ch.id);
   joinSound.play().catch(() => { });
+
+  // Analyser ton propre micro pour l'indicateur visuel
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const analyser = audioContext.createAnalyser();
+  const source = audioContext.createMediaStreamSource(localStream);
+
+  analyser.fftSize = 256;
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+
+  source.connect(analyser);
+
+  // Surveiller le niveau audio de ton propre micro
+  const checkMyAudioLevel = () => {
+    if (!currentVoiceChannel) return;
+    
+    analyser.getByteFrequencyData(dataArray);
+    const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+    
+    const isSpeaking = average > 15;
+    
+    updateMyVoiceIndicator(isSpeaking);
+    
+    requestAnimationFrame(checkMyAudioLevel);
+  };
+
+  checkMyAudioLevel();
 }
 
 $('leave-voice-btn').onclick = leaveVoice;
@@ -1101,6 +1148,7 @@ async function leaveVoice() {
   document.getElementById('ch-' + currentVoiceChannel)?.classList.remove('active');
   leaveSound.play().catch(() => { });
   currentVoiceChannel = null;
+  localStorage.removeItem('currentVoiceChannel');
 }
 
 $('mute-btn').onclick = () => {
@@ -1174,7 +1222,12 @@ $('screen-btn').onclick = async () => {
 async function startScreenShare(sourceId) {
   try {
     screenStream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
+      audio: {
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: sourceId
+        }
+      },
       video: {
         mandatory: {
           chromeMediaSource: 'desktop',
@@ -1293,6 +1346,8 @@ source.connect(analyser);
 
 // Surveiller le niveau audio
 const checkAudioLevel = () => {
+  if (!peers[peerId]) return; // Arrêter si le peer n'existe plus
+  
   analyser.getByteFrequencyData(dataArray);
   const average = dataArray.reduce((a, b) => a + b) / bufferLength;
   
@@ -1322,6 +1377,25 @@ function updateVoiceIndicator(peerId, isSpeaking) {
   document.querySelectorAll('.voice-user-avatar-small').forEach(avatar => {
     const parent = avatar.closest('.voice-user-item-sidebar');
     if (parent && parent.textContent.includes(username)) {
+      if (isSpeaking) {
+        avatar.classList.add('speaking');
+      } else {
+        avatar.classList.remove('speaking');
+      }
+    }
+  });cd 
+}
+
+function updateMyVoiceIndicator(isSpeaking) {
+  console.log('updateMyVoiceIndicator appelé, isSpeaking:', isSpeaking, 'myUsername:', myUsername);
+  
+  // Chercher tous les avatars de ton propre utilisateur dans la sidebar
+  document.querySelectorAll('.voice-user-avatar-small').forEach(avatar => {
+    const parent = avatar.closest('.voice-user-item-sidebar');
+    console.log('Avatar trouvé, textContent:', parent?.textContent);
+    
+    if (parent && parent.textContent.includes(myUsername)) {
+      console.log('Match trouvé pour myUsername!');
       if (isSpeaking) {
         avatar.classList.add('speaking');
       } else {
