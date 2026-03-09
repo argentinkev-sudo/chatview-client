@@ -4,6 +4,7 @@ let socket = null, myUsername = null, myToken = null, myAvatar = null;
 let currentChannel = null, currentVoiceChannel = null;
 let isMuted = false, isDeafened = false, isSharing = false;
 let peers = {}, localStream = null, screenStream = null;
+let streamQuality = localStorage.getItem('streamQuality') || 'hd'; // 'hd' ou 'sd'
 
 const $ = id => document.getElementById(id);
 // Notifications
@@ -1230,8 +1231,11 @@ async function startScreenShare(sourceId) {
       },
       video: {
         mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: sourceId
+        chromeMediaSource: 'desktop',
+        chromeMediaSourceId: sourceId,
+        maxWidth: streamQuality === 'hd' ? 1920 : 1280,
+        maxHeight: streamQuality === 'hd' ? 1080 : 720,
+        maxFrameRate: streamQuality === 'hd' ? 60 : 30
         }
       }
     });
@@ -1314,6 +1318,27 @@ async function createPeer(peerId, initiator, username) {
   
   box.appendChild(video);
   box.appendChild(closeBtn);
+
+  // Toggle HD/SD
+const qualityToggle = document.createElement('button');
+qualityToggle.className = 'stream-quality-toggle';
+qualityToggle.textContent = streamQuality.toUpperCase();
+qualityToggle.classList.add(streamQuality);
+qualityToggle.title = 'Basculer qualité HD/SD';
+
+qualityToggle.onclick = () => {
+  streamQuality = streamQuality === 'hd' ? 'sd' : 'hd';
+  localStorage.setItem('streamQuality', streamQuality);
+  qualityToggle.textContent = streamQuality.toUpperCase();
+  qualityToggle.classList.toggle('hd');
+  qualityToggle.classList.toggle('sd');
+  
+  // Info à l'utilisateur
+  alert(`Qualité changée en ${streamQuality.toUpperCase()}. Relancez le partage d'écran pour appliquer.`);
+};
+
+box.appendChild(qualityToggle);
+
   $('remote-streams').appendChild(box);
   
   // Détecter quand le stream s'arrête
