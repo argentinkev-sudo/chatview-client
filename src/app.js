@@ -888,10 +888,54 @@ window.toggleVolumePopup = function (peerId, event) {
 // Stocker les GainNodes pour chaque peer
 
 function applyVolume(peerId, volume) {
+console.log('applyVolume appelé:', peerId, volume);
+
   // Mettre à jour via GainNode (permet 0-200%)
   if (window.peerGainNodes && window.peerGainNodes[peerId]) {
+    console.log('GainNode trouvé, application du volume:', volume / 100);
     window.peerGainNodes[peerId].gain.value = volume / 100;
+     } else {
+    console.log('GainNode non trouvé pour:', peerId);
   }
+}
+function toggleVolumePopup(peerId, event) {
+  event.stopPropagation();
+  
+  // Supprimer les popups existants
+  document.querySelectorAll('.volume-popup').forEach(p => p.remove());
+  
+  const popup = document.createElement('div');
+  popup.className = 'volume-popup';
+  popup.innerHTML = `
+    <label>Volume: <span id="volume-value-${peerId}">100</span>%</label>
+    <input type="range" id="volume-slider-${peerId}" min="0" max="200" value="${userVolumes[peerId] || 100}">
+  `;
+  
+  const btn = event.target;
+  btn.parentElement.appendChild(popup);
+  
+  const slider = document.getElementById(`volume-slider-${peerId}`);
+  const valueDisplay = document.getElementById(`volume-value-${peerId}`);
+  
+  // Afficher la valeur actuelle
+  valueDisplay.textContent = userVolumes[peerId] || 100;
+  
+  slider.oninput = (e) => {
+    const volume = parseInt(e.target.value);
+    valueDisplay.textContent = volume;
+    userVolumes[peerId] = volume;
+    applyVolume(peerId, volume);
+  };
+  
+  // Fermer au clic extérieur
+  setTimeout(() => {
+    document.addEventListener('click', function closePopup(e) {
+      if (!popup.contains(e.target)) {
+        popup.remove();
+        document.removeEventListener('click', closePopup);
+      }
+    });
+  }, 100);
 }
 
 
