@@ -5,6 +5,12 @@ let currentChannel = null, currentVoiceChannel = null;
 let isMuted = false, isDeafened = false, isSharing = false;
 let peers = {}, localStream = null, screenStream = null;
 let streamQuality = localStorage.getItem('streamQuality') || 'hd'; // 'hd' ou 'sd'
+let streamingUsers = new Set(); // Utilisateurs qui stream actuellement
+let micGainNode = null;
+let audioContextInstance = null;
+let compressorEnabled = localStorage.getItem('audioCompressor') === 'true';
+let noiseGateEnabled = localStorage.getItem('noiseGate') === 'true';
+let equalizerEnabled = localStorage.getItem('audioEqualizer') === 'true';
 
 const $ = id => document.getElementById(id);
 // Notifications
@@ -310,6 +316,13 @@ if (savedVoiceChannel) {
 
   // Initialiser le toggle réduction de bruit
 $('noise-reduction').checked = noiseReductionEnabled;
+
+ // Initialiser les autres toggles audio
+$('audio-compressor').checked = compressorEnabled;
+$('noise-gate').checked = noiseGateEnabled;
+$('audio-equalizer').checked = equalizerEnabled;
+  
+  // Volume micro
   
   // Volume micro
   $('mic-volume').oninput = (e) => {
@@ -317,6 +330,11 @@ $('noise-reduction').checked = noiseReductionEnabled;
     $('mic-volume-value').textContent = value + '%';
     micGain = value / 100;
     localStorage.setItem('micVolume', value);
+
+    // Appliquer le gain réel via Web Audio API
+  if (micGainNode) {
+    micGainNode.gain.value = value / 100;
+  }
     
     if (localStream) {
       localStream.getAudioTracks().forEach(track => {
@@ -353,6 +371,31 @@ $('noise-reduction').onchange = (e) => {
         autoGainControl: true
       });
     });
+  }
+};
+
+// Compresseur audio
+$('audio-compressor').onchange = (e) => {
+  compressorEnabled = e.target.checked;
+  localStorage.setItem('audioCompressor', compressorEnabled);
+  alert('Relancez le salon vocal pour appliquer le compresseur.');
+};
+
+// Gate de bruit
+$('noise-gate').onchange = (e) => {
+  noiseGateEnabled = e.target.checked;
+  localStorage.setItem('noiseGate', noiseGateEnabled);
+  // Le gate s'applique en temps réel dans checkMyAudioLevel
+};
+
+// Égaliseur
+$('audio-equalizer').onchange = (e) => {
+  equalizerEnabled = e.target.checked;
+  localStorage.setItem('audioEqualizer', equalizerEnabled);
+  
+  // Appliquer l'égaliseur en temps réel
+  if (window.audioFilters && window.audioFilters.biquadFilter) {
+    window.audioFilters.biquadFilter.gain.value = equalizerEnabled ? 6 : 0; // +6dB boost aigus
   }
 };
   
@@ -643,6 +686,10 @@ function connectSocket() {
     msgBody.appendChild(reactionsDiv);
   }
 });
+
+socket.on('user_streaming_update', ({ username, streaming }) => {
+  updateStreamIndicator(username, streaming);
+});
 // Keep-alive ping
 setInterval(() => {
   if (socket && socket.connected) {
@@ -765,7 +812,21 @@ function updateVoiceRooms(state) {
       });
     }
   });
+  // Réappliquer les boutons rouges pour les utilisateurs qui stream
+  streamingUsers.forEach(username => {
+    document.querySelectorAll('.voice-user-item-sidebar').forEach(item => {
+      if (item.textContent.includes(username) && !item.querySelector('.stream-indicator-btn')) {
+        const streamBtn = document.createElement('button');
+        streamBtn.className = 'stream-indicator-btn';
+        streamBtn.textContent = '🔴';
+        streamBtn.title = 'Voir le stream';
+        streamBtn.onclick = () => toggleStreamWindow(username);
+        item.appendChild(streamBtn);
+      }
+    });
+  });
 }
+
 // Rafraîchissement automatique des salons vocaux toutes les 30 secondes
 setInterval(() => {
   if (socket && socket.connected) {
@@ -827,9 +888,9 @@ window.toggleVolumePopup = function (peerId, event) {
 // Stocker les GainNodes pour chaque peer
 
 function applyVolume(peerId, volume) {
-  const audio = document.querySelector(`audio[data-peer-id="${peerId}"]`);
-  if (audio) {
-    audio.volume = Math.min(volume / 100, 1.0);
+  // Mettre à jour via GainNode (permet 0-200%)
+  if (window.peerGainNodes && window.peerGainNodes[peerId]) {
+    window.peerGainNodes[peerId].gain.value = volume / 100;
   }
 }
 
@@ -1108,29 +1169,91 @@ async function joinVoiceChannel(ch) {
   joinSound.play().catch(() => { });
 
   // Analyser ton propre micro pour l'indicateur visuel
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const analyser = audioContext.createAnalyser();
-  const source = audioContext.createMediaStreamSource(localStream);
+audioContextInstance = new (window.AudioContext || window.webkitAudioContext)();
+const analyser = audioContextInstance.createAnalyser();
+micGainNode = audioContextInstance.createGain();
+const source = audioContextInstance.createMediaStreamSource(localStream);
 
-  analyser.fftSize = 256;
-  const bufferLength = analyser.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
+// Appliquer le volume micro sauvegardé
+micGainNode.gain.value = savedMicVolume / 100;
 
-  source.connect(analyser);
+analyser.fftSize = 256;
+const bufferLength = analyser.frequencyBinCount;
+const dataArray = new Uint8Array(bufferLength);
+
+
+// Connecter : source → gain → analyser
+source.connect(micGainNode);
+
+// Créer les filtres audio
+const compressor = audioContextInstance.createDynamicsCompressor();
+const biquadFilter = audioContextInstance.createBiquadFilter();
+const gateGainNode = audioContextInstance.createGain(); // Gain séparé pour le gate
+
+// Configurer le compresseur
+compressor.threshold.value = -50;
+compressor.knee.value = 40;
+compressor.ratio.value = 12;
+compressor.attack.value = 0;
+compressor.release.value = 0.25;
+
+// Configurer l'égaliseur (boost aigus)
+biquadFilter.type = 'highshelf';
+biquadFilter.frequency.value = 3000;
+biquadFilter.gain.value = 0;
+
+// Brancher l'analyseur directement sur le micGain (pour le rond vert)
+micGainNode.connect(analyser);
+
+// Connecter en chaîne : micGain → gateGain → compressor → filter
+let currentNode = micGainNode;
+
+// Ajouter le gate gain node
+currentNode.connect(gateGainNode);
+currentNode = gateGainNode;
+
+if (compressorEnabled) {
+  currentNode.connect(compressor);
+  currentNode = compressor;
+}
+
+if (equalizerEnabled) {
+  currentNode.connect(biquadFilter);
+  currentNode = biquadFilter;
+}
+
+// Stocker les nœuds
+window.audioFilters = {
+  compressor,
+  biquadFilter,
+  gateGainNode,
+  analyser,
+  lastNode: currentNode
+};
 
   // Surveiller le niveau audio de ton propre micro
-  const checkMyAudioLevel = () => {
-    if (!currentVoiceChannel) return;
-    
-    analyser.getByteFrequencyData(dataArray);
-    const average = dataArray.reduce((a, b) => a + b) / bufferLength;
-    
-    const isSpeaking = average > 15;
-    
-    updateMyVoiceIndicator(isSpeaking);
-    
-    requestAnimationFrame(checkMyAudioLevel);
-  };
+const checkMyAudioLevel = () => {
+  if (!currentVoiceChannel) return;
+  
+  analyser.getByteFrequencyData(dataArray);
+  const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+  
+  // Gate de bruit : couper le micro si niveau trop bas
+if (noiseGateEnabled && window.audioFilters && window.audioFilters.gateGainNode) {
+  const threshold = 15;
+  if (average < threshold) {
+    window.audioFilters.gateGainNode.gain.value = 0; // Couper
+  } else {
+    window.audioFilters.gateGainNode.gain.value = 1.0; // Restaurer
+  }
+}
+  
+  const isSpeaking = average > 15;
+  
+  updateMyVoiceIndicator(isSpeaking);
+  
+  requestAnimationFrame(checkMyAudioLevel);
+};
 
   checkMyAudioLevel();
 }
@@ -1173,6 +1296,8 @@ $('screen-btn').onclick = async () => {
     isSharing = false;
     $('screen-btn').classList.remove('active');
     $('screen-btn').textContent = '🖥️';
+    // Signaler aux autres que je ne stream plus
+socket.emit('user_streaming', { username: myUsername, streaming: false });
   } else {
     try {
       // Récupérer les sources disponibles
@@ -1235,7 +1360,9 @@ async function startScreenShare(sourceId) {
         chromeMediaSourceId: sourceId,
         maxWidth: streamQuality === 'hd' ? 1920 : 1280,
         maxHeight: streamQuality === 'hd' ? 1080 : 720,
-        maxFrameRate: streamQuality === 'hd' ? 60 : 30
+        maxFrameRate: streamQuality === 'hd' ? 60 : 30,
+        minBitrate: streamQuality === 'hd' ? 6000000 : 2500000,  // 6 Mbps HD, 2.5 Mbps SD
+        maxBitrate: streamQuality === 'hd' ? 8000000 : 4000000   // 8 Mbps HD, 4 Mbps SD
         }
       }
     });
@@ -1251,6 +1378,8 @@ async function startScreenShare(sourceId) {
       const peerData = peers[peerId];
       if (peerData && peerData.peer) {
         peerData.peer.addStream(screenStream);
+        // Signaler aux autres que je stream
+    socket.emit('user_streaming', { username: myUsername, streaming: true });
       }
     });
   } catch (e) {
@@ -1310,7 +1439,9 @@ async function createPeer(peerId, initiator, username) {
   const closeBtn = document.createElement('button');
   closeBtn.className = 'stream-close-btn';
   closeBtn.textContent = '✕';
-  closeBtn.onclick = () => box.remove();
+  closeBtn.onclick = () => {
+  box.style.display = 'none'; // Cacher au lieu de supprimer
+};
   
   video.onclick = () => {
     video.classList.toggle('video-enlarged');
@@ -1345,19 +1476,32 @@ box.appendChild(qualityToggle);
   stream.getVideoTracks()[0].onended = () => box.remove();
 
     } else {
-      // Audio seulement
-      const audio = document.createElement('audio');
-      audio.autoplay = true;
-      audio.className = 'remote-audio';
-      audio.srcObject = stream;
-      audio.setAttribute('data-peer-id', peerId);
-      if (isDeafened) audio.muted = true;
-      document.body.appendChild(audio);
+     // Audio seulement
+const audio = document.createElement('audio');
+audio.autoplay = true;
+audio.className = 'remote-audio';
+audio.srcObject = stream;
+audio.setAttribute('data-peer-id', peerId);
+if (isDeafened) audio.muted = true;
+document.body.appendChild(audio);
 
-      // Appliquer le volume sauvegardé
-      const savedVolume = userVolumes[peerId] || 100;
-      audio.volume = Math.min(savedVolume / 100, 1.0);
+// Créer GainNode pour contrôler le volume jusqu'à 200%
+const peerAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+const peerGainNode = peerAudioContext.createGain();
+const peerSource = peerAudioContext.createMediaElementSource(audio);
+const destination = peerAudioContext.destination;
 
+// Appliquer le volume sauvegardé (peut aller jusqu'à 2.0 = 200%)
+const savedVolume = userVolumes[peerId] || 100;
+peerGainNode.gain.value = savedVolume / 100;
+
+// Connecter : audio → gain → destination
+peerSource.connect(peerGainNode);
+peerGainNode.connect(destination);
+
+// Stocker le GainNode pour pouvoir le modifier plus tard
+if (!window.peerGainNodes) window.peerGainNodes = {};
+window.peerGainNodes[peerId] = peerGainNode;
       // Analyseur audio pour détection de parole
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 const analyser = audioContext.createAnalyser();
@@ -1424,6 +1568,69 @@ function updateMyVoiceIndicator(isSpeaking) {
       }
     }
   });
+}
+
+function updateStreamIndicator(username, streaming) {
+  // Tracker qui stream
+  if (streaming) {
+    streamingUsers.add(username);
+    
+    // Ouvrir automatiquement la fenêtre du stream
+    const peerEntry = Object.entries(peers).find(([id, data]) => data.username === username);
+    if (peerEntry) {
+      const streamBox = document.getElementById('stream-' + peerEntry[0]);
+      if (streamBox) streamBox.style.display = '';
+    }
+  } else {
+    streamingUsers.delete(username);
+    
+    // Fermer automatiquement la fenêtre du stream
+    const peerEntry = Object.entries(peers).find(([id, data]) => data.username === username);
+    if (peerEntry) {
+      const streamBox = document.getElementById('stream-' + peerEntry[0]);
+      if (streamBox) streamBox.style.display = 'none';
+    }
+  }
+  
+  // Chercher tous les utilisateurs dans la sidebar
+  document.querySelectorAll('.voice-user-item-sidebar').forEach(item => {
+    if (item.textContent.includes(username)) {
+      let streamBtn = item.querySelector('.stream-indicator-btn');
+      
+      if (streaming) {
+        // Ajouter le bouton rouge s'il n'existe pas
+        if (!streamBtn) {
+          streamBtn = document.createElement('button');
+          streamBtn.className = 'stream-indicator-btn';
+          streamBtn.textContent = '🔴';
+          streamBtn.title = 'Voir le stream';
+          streamBtn.onclick = () => toggleStreamWindow(username);
+          item.appendChild(streamBtn);
+        }
+      } else {
+        // Retirer le bouton s'il existe
+        if (streamBtn) streamBtn.remove();
+      }
+    }
+  });
+}
+
+function toggleStreamWindow(username) {
+  // Trouver le peerId correspondant à ce username
+  const peerEntry = Object.entries(peers).find(([id, data]) => data.username === username);
+  if (!peerEntry) return;
+  
+  const peerId = peerEntry[0];
+  const streamBox = document.getElementById('stream-' + peerId);
+  
+  if (streamBox) {
+    // Si la fenêtre existe, la fermer ou l'afficher
+    if (streamBox.style.display === 'none') {
+      streamBox.style.display = '';
+    } else {
+      streamBox.style.display = 'none';
+    }
+  }
 }
 
 $('members-btn').onclick = () => {

@@ -31,7 +31,7 @@
   </div>
 
   <div class="sidebar">
-    <div class="sidebar-header">ChatView v2.2.1</div>
+    <div class="sidebar-header">ChatView v2.2.2</div>
     <div class="channels-scroll">
       <div class="channel-group-title">SALONS TEXTUELS</div>
       <div id="text-channels"></div>
@@ -165,15 +165,40 @@
       <input type="range" id="output-volume" min="0" max="200" value="100">
       <span id="output-volume-value">100%</span>
     </div>
-    <div class="audio-setting-item">
+  <div class="audio-setting-item">
   <label>🔇 Réduction de bruit</label>
   <label class="toggle-switch">
     <input type="checkbox" id="noise-reduction">
     <span class="toggle-slider"></span>
   </label>
 </div>
-  </div>
+
+<div class="audio-setting-item">
+  <label>📊 Compresseur audio</label>
+  <label class="toggle-switch">
+    <input type="checkbox" id="audio-compressor">
+    <span class="toggle-slider"></span>
+  </label>
 </div>
+
+<div class="audio-setting-item">
+  <label>🚪 Gate de bruit</label>
+  <label class="toggle-switch">
+    <input type="checkbox" id="noise-gate">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+
+<div class="audio-setting-item">
+  <label>🎚️ Égaliseur</label>
+  <label class="toggle-switch">
+    <input type="checkbox" id="audio-equalizer">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+ </div>
+</div>
+  
 
 <div class="admin-section" id="admin-users-section">
   <h3>Utilisateurs</h3>

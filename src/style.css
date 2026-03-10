@@ -1174,3 +1174,28 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .stream-quality-toggle.sd {
   color: #faa61a;
 }
+
+/* Bouton rouge stream dans sidebar */
+.stream-indicator-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 6px;
+  padding: 2px;
+  animation: pulse-red 1.5s ease-in-out infinite;
+  transition: transform .2s;
+}
+
+.stream-indicator-btn:hover {
+  transform: scale(1.2);
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
