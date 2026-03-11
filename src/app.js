@@ -843,61 +843,29 @@ if (savedVolumes) {
   userVolumes = JSON.parse(savedVolumes);
 }
 
-window.toggleVolumePopup = function (peerId, event) {
-  event.stopPropagation();
-
-  // Fermer les autres popups
-  document.querySelectorAll('.volume-popup').forEach(p => p.remove());
-
-  const currentVolume = userVolumes[peerId] || 100;
-
-  const popup = document.createElement('div');
-  popup.className = 'volume-popup';
-  popup.innerHTML = `
-    <div class="volume-popup-header">Volume</div>
-    <input type="range" class="volume-slider" min="0" max="200" value="${currentVolume}" id="volume-slider-${peerId}">
-    <div class="volume-value" id="volume-value-${peerId}">${currentVolume}%</div>
-  `;
-
-  const userEl = document.getElementById('voice-user-' + peerId);
-  userEl.appendChild(popup);
-
-  // Gérer le changement de volume
-  const slider = document.getElementById('volume-slider-' + peerId);
-  const valueDisplay = document.getElementById('volume-value-' + peerId);
-
-  slider.oninput = () => {
-    const volume = parseInt(slider.value);
-    valueDisplay.textContent = volume + '%';
-    userVolumes[peerId] = volume;
-    localStorage.setItem('userVolumes', JSON.stringify(userVolumes));
-    applyVolume(peerId, volume);
-  };
-
-  // Fermer au clic extérieur
-  setTimeout(() => {
-    document.addEventListener('click', function closePopup(e) {
-      if (!popup.contains(e.target)) {
-        popup.remove();
-        document.removeEventListener('click', closePopup);
-      }
-    });
-  }, 10);
-};
-
 // Stocker les GainNodes pour chaque peer
 
 function applyVolume(peerId, volume) {
-console.log('applyVolume appelé:', peerId, volume);
-
-  // Mettre à jour via GainNode (permet 0-200%)
+  console.log('applyVolume appelé:', peerId, 'volume:', volume);
+  
+  // Mettre à jour via GainNode (0-200%)
   if (window.peerGainNodes && window.peerGainNodes[peerId]) {
-    console.log('GainNode trouvé, application du volume:', volume / 100);
-    window.peerGainNodes[peerId].gain.value = volume / 100;
-     } else {
-    console.log('GainNode non trouvé pour:', peerId);
+    const gainValue = volume / 100; // 0 à 2.0
+    window.peerGainNodes[peerId].gain.value = gainValue;
+    console.log('Gain appliqué:', gainValue);
+  } else {
+    console.log('❌ GainNode NON TROUVÉ pour:', peerId);
+    console.log('peerGainNodes disponibles:', Object.keys(window.peerGainNodes || {}));
+  }
+  
+  // L'élément audio reste TOUJOURS à volume 1.0
+  // Le gainNode s'occupe de tout
+  const audio = document.querySelector(`audio[data-peer-id="${peerId}"]`);
+  if (audio) {
+    audio.volume = 1.0; // Ne jamais toucher !
   }
 }
+
 function toggleVolumePopup(peerId, event) {
   event.stopPropagation();
   
@@ -908,7 +876,7 @@ function toggleVolumePopup(peerId, event) {
   popup.className = 'volume-popup';
   popup.innerHTML = `
     <label>Volume: <span id="volume-value-${peerId}">100</span>%</label>
-    <input type="range" id="volume-slider-${peerId}" min="0" max="200" value="${userVolumes[peerId] || 100}">
+    <input type="range" id="volume-slider-${peerId}" min="0" max="200" value="${userVolumes[peerId] !== undefined ? userVolumes[peerId] : 100}">
   `;
   
   const btn = event.target;
@@ -918,7 +886,7 @@ function toggleVolumePopup(peerId, event) {
   const valueDisplay = document.getElementById(`volume-value-${peerId}`);
   
   // Afficher la valeur actuelle
-  valueDisplay.textContent = userVolumes[peerId] || 100;
+  valueDisplay.textContent = userVolumes[peerId] !== undefined ? userVolumes[peerId] : 100;
   
   slider.oninput = (e) => {
     const volume = parseInt(e.target.value);
