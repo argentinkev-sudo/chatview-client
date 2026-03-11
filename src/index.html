@@ -31,7 +31,7 @@
   </div>
 
   <div class="sidebar">
-    <div class="sidebar-header">ChatView v2.2.4</div>
+    <div class="sidebar-header">ChatView v2.2.5</div>
     <div class="channels-scroll">
       <div class="channel-group-title">SALONS TEXTUELS</div>
       <div id="text-channels"></div>
@@ -209,6 +209,34 @@
   <h3>Messages récents</h3>
   <div id="admin-messages-list"></div>
 </div>
+  </div>
+</div>
+
+<!-- MODAL PROFIL UTILISATEUR -->
+<div id="user-profile-modal" class="modal hidden">
+  <div class="modal-content profile-modal-content">
+    <div class="modal-header">
+      <h2 id="profile-username">Profil</h2>
+      <button class="modal-close-btn" id="profile-close-btn">✕</button>
+    </div>
+    <div class="profile-body">
+      <div class="profile-avatar-large" id="profile-avatar"></div>
+      <div class="profile-info">
+        <div class="profile-field">
+          <label>Rôle</label>
+          <span id="profile-role"></span>
+        </div>
+        <div class="profile-field">
+          <label>Bio</label>
+          <textarea id="profile-bio" readonly rows="4"></textarea>
+        </div>
+        <div class="profile-field">
+          <label>Membre depuis</label>
+          <span id="profile-created"></span>
+        </div>
+      </div>
+      <button id="profile-edit-btn" class="btn-primary hidden">Modifier mon profil</button>
+    </div>
   </div>
 </div>
 

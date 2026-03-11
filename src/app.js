@@ -13,6 +13,14 @@ let noiseGateEnabled = localStorage.getItem('noiseGate') === 'true';
 let equalizerEnabled = localStorage.getItem('audioEqualizer') === 'true';
 
 const $ = id => document.getElementById(id);
+
+// Événements globaux (chargés une seule fois)
+window.addEventListener('DOMContentLoaded', () => {
+  $('profile-close-btn').onclick = () => {
+    $('user-profile-modal').classList.add('hidden');
+  };
+});
+
 // Notifications
 let unreadCounts = {}; // { channelId: count }
 let onlineUsers = {};
@@ -624,7 +632,8 @@ function connectSocket() {
         </div>
         <span class="username-role role-${user.role || 'user'}">${user.username}</span>
       `;
-        $('members-list').appendChild(el);
+      el.onclick = () => openUserProfile(user);
+      $('members-list').appendChild(el);
       });
     }
 
@@ -645,6 +654,7 @@ function connectSocket() {
         </div>
         <span>${user.username}</span>
       `;
+      el.onclick = () => openUserProfile(user);
         $('members-list').appendChild(el);
       });
     }
@@ -858,12 +868,16 @@ function applyVolume(peerId, volume) {
     console.log('peerGainNodes disponibles:', Object.keys(window.peerGainNodes || {}));
   }
   
-  // L'élément audio reste TOUJOURS à volume 1.0
-  // Le gainNode s'occupe de tout
-  const audio = document.querySelector(`audio[data-peer-id="${peerId}"]`);
-  if (audio) {
-    audio.volume = 1.0; // Ne jamais toucher !
+  // Gérer l'élément audio
+const audio = document.querySelector(`audio[data-peer-id="${peerId}"]`);
+if (audio) {
+  if (volume === 0) {
+    audio.muted = true; // Couper complètement à 0
+  } else {
+    audio.muted = false;
+    audio.volume = 1.0; // Le gainNode s'occupe du reste
   }
+ }
 }
 
 function toggleVolumePopup(peerId, event) {
@@ -905,6 +919,88 @@ function toggleVolumePopup(peerId, event) {
     });
   }, 100);
 }
+
+function openUserProfile(user) {
+  const modal = $('user-profile-modal');
+  
+  // Remplir les infos
+  $('profile-username').textContent = user.username;
+  
+  // Avatar
+  const avatarEl = $('profile-avatar');
+  const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
+  if (avatarUrl) {
+    avatarEl.innerHTML = `<img src="${avatarUrl}" alt="${user.username}">`;
+  } else {
+    avatarEl.textContent = user.username[0].toUpperCase();
+  }
+  
+  // Rôle avec badge coloré
+  const roleText = user.role === 'admin' ? '👑 Administrateur' : 
+                   user.role === 'moderator' ? '🛡️ Modérateur' : 
+                   '👤 Utilisateur';
+  $('profile-role').textContent = roleText;
+  $('profile-role').className = `role-${user.role || 'user'}`;
+  
+  // Bio
+  $('profile-bio').value = user.bio || 'Aucune bio';
+  
+  // Date d'inscription
+  const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'Inconnue';
+  $('profile-created').textContent = createdDate;
+  
+  // Bouton modifier (visible seulement si c'est ton profil)
+  const editBtn = $('profile-edit-btn');
+  if (user.username === myUsername) {
+    editBtn.classList.remove('hidden');
+    editBtn.onclick = () => enableProfileEdit();
+  } else {
+    editBtn.classList.add('hidden');
+  }
+  
+  // Ouvrir le modal
+  modal.classList.remove('hidden');
+}
+
+function enableProfileEdit() {
+  const bioField = $('profile-bio');
+  const editBtn = $('profile-edit-btn');
+  
+  // Rendre le champ éditable
+  bioField.readOnly = false;
+  bioField.focus();
+  
+  // Changer le bouton en "Sauvegarder"
+  editBtn.textContent = 'Sauvegarder';
+  editBtn.onclick = () => saveProfileBio(bioField.value);
+}
+
+async function saveProfileBio(newBio) {
+  try {
+    const res = await fetch(SERVER_URL + '/update-bio', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + myToken
+      },
+      body: JSON.stringify({ bio: newBio })
+    });
+    
+ if (res.ok) {
+  alert('Bio mise à jour !');
+  $('user-profile-modal').classList.add('hidden');
+  // Remettre en lecture seule
+  $('profile-bio').readOnly = true;
+  $('profile-edit-btn').textContent = 'Modifier mon profil';
+} else {
+      alert('Erreur lors de la sauvegarde');
+    }
+  } catch (err) {
+    console.error('Erreur sauvegarde bio:', err);
+    alert('Erreur lors de la sauvegarde');
+  }
+}
+
 
 
 // TEXT CHANNEL
