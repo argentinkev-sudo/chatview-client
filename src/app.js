@@ -1,6 +1,6 @@
 const SERVER_URL = 'https://chatapp-server-e97e.onrender.com';
 
-let socket = null, myUsername = null, myToken = null, myAvatar = null;
+let socket = null, myUsername = null, myToken = null, myAvatar = null, currentPMUser = null;
 let currentChannel = null, currentVoiceChannel = null;
 let isMuted = false, isDeafened = false, isSharing = false;
 let peers = {}, localStream = null, screenStream = null;
@@ -18,6 +18,12 @@ const $ = id => document.getElementById(id);
 window.addEventListener('DOMContentLoaded', () => {
   $('profile-close-btn').onclick = () => {
     $('user-profile-modal').classList.add('hidden');
+  };
+
+   // Fermer le modal édition PM
+  $('edit-pm-close-btn').onclick = () => {
+    $('edit-pm-modal').classList.add('hidden');
+    $('edit-pm-input').value = '';
   };
 });
 
@@ -164,17 +170,23 @@ async function loadFriends() {
     });
     
     // Afficher amis
-    const friendsList = $('friends-list');
-    friendsList.innerHTML = '';
-    
-    data.friends.forEach(friend => {
-      const div = document.createElement('div');
-      div.className = 'friend-item';
-      div.innerHTML = `
-        <span>${friend.username}</span>
-      `;
-      friendsList.appendChild(div);
-    });
+const friendsList = $('friends-list');
+friendsList.innerHTML = '';
+
+data.friends.forEach(friend => {
+  const div = document.createElement('div');
+  div.className = 'friend-item';
+  
+  // Vérifier si en ligne
+  const isOnline = Object.values(onlineUsers).some(u => u.username === friend.username);
+  const statusClass = isOnline ? 'online' : 'offline';
+  
+  div.innerHTML = `
+    <span class="${statusClass}">${friend.username}</span>
+    <button class="btn-pm" onclick="openPM('${friend.username}')">💬</button>
+  `;
+  friendsList.appendChild(div);
+});
     
   } catch (err) {
     console.error('Erreur chargement amis:', err);
@@ -222,6 +234,155 @@ window.rejectFriendRequest = async (requestId) => {
   } catch (err) {
     console.error(err);
     alert('Erreur');
+  }
+};
+
+// Ouvrir conversation privée
+window.openPM = async (friendUsername) => {
+  // Revenir à la vue ChatView
+  $('chatview-btn').classList.add('active');
+  $('friends-btn').classList.remove('active');
+  document.querySelector('.sidebar').classList.remove('hidden');
+  document.querySelector('.friends-sidebar').classList.add('hidden');
+  
+  // Indiquer qu'on est en mode PM
+  currentPMUser = friendUsername;
+  currentChannel = null;
+  
+  // Changer le titre du chat
+  $('channel-name').textContent = `💬 ${friendUsername}`;
+  
+  // Charger l'historique MP
+  try {
+    const res = await fetch(SERVER_URL + '/load-pm', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + myToken
+      },
+      body: JSON.stringify({ friendUsername })
+    });
+    
+    const messages = await res.json();
+
+    // Afficher la zone de saisie
+    $('input-area').classList.remove('hidden');
+
+    // Afficher les messages
+    $('messages-area').innerHTML = '';
+    messages.forEach(msg => {
+      addPM(msg);
+    });
+    scrollBottom();
+
+    // Mettre le focus sur l'input
+    setTimeout(() => {
+      $('msg-input').focus();
+    }, 100);
+    
+  } catch (err) {
+    console.error('Erreur chargement MP:', err);
+  }
+};
+
+// Afficher un MP
+function addPM(msg) {
+  const div = document.createElement('div');
+  div.className = 'message';
+  div.setAttribute('data-msg-id', msg._id);
+  
+  const isMine = msg.from === myUsername;
+  const displayName = isMine ? myUsername : msg.from;
+  
+  div.innerHTML = `
+    <div class="msg-header">
+      <span class="msg-username">${displayName}</span>
+      <span class="msg-time">${new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+      ${isMine ? `
+        <button class="msg-edit-btn" onclick="editPM('${msg._id}')">✏️</button>
+        <button class="msg-delete-btn" onclick="deletePM('${msg._id}')">🗑️</button>
+      ` : ''}
+    </div>
+    <div class="msg-body">
+      <div class="msg-content">${formatLinks(formatMentions(escapeHtml(msg.content)))}${msg.edited ? ' <span class="msg-edited">(modifié)</span>' : ''}</div>
+    </div>
+  `;
+  
+  $('messages-area').appendChild(div);
+}
+
+// Éditer un MP
+window.editPM = async (messageId) => {
+  // Récupérer le contenu actuel
+  const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+  const currentContent = msgEl.querySelector('.msg-content').textContent.replace(' (modifié)', '').trim();
+  
+  // Ouvrir le modal
+  $('edit-pm-modal').classList.remove('hidden');
+  $('edit-pm-input').value = currentContent;
+  $('edit-pm-input').focus();
+  
+  // Gérer la sauvegarde
+  $('save-pm-edit-btn').onclick = async () => {
+    const newContent = $('edit-pm-input').value.trim();
+    if (!newContent) return alert('Le message ne peut pas être vide');
+    
+    try {
+      const res = await fetch(SERVER_URL + '/edit-pm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + myToken
+        },
+        body: JSON.stringify({ messageId, newContent })
+      });
+      
+      if (res.ok) {
+        // Mettre à jour localement
+        const contentEl = msgEl.querySelector('.msg-content');
+        contentEl.innerHTML = formatLinks(formatMentions(escapeHtml(newContent))) + ' <span class="msg-edited">(modifié)</span>';
+        
+        // Fermer le modal
+        $('edit-pm-modal').classList.add('hidden');
+        $('edit-pm-input').value = '';
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la modification');
+    }
+  };
+};
+
+// Supprimer un MP
+window.deletePM = async (messageId) => {
+  if (!confirm('Supprimer ce message ?')) return;
+  
+  try {
+    const res = await fetch(SERVER_URL + '/delete-pm', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + myToken
+      },
+      body: JSON.stringify({ messageId })
+    });
+    
+    if (res.ok) {
+  // Supprimer localement
+  const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+  if (msgEl) msgEl.remove();
+  
+  // Forcer blur/focus de la fenêtre
+setTimeout(() => {
+  window.blur();
+  setTimeout(() => {
+    window.focus();
+    $('msg-input').focus();
+  }, 100);
+}, 50);
+}
+  } catch (err) {
+    console.error(err);
   }
 };
 
@@ -346,7 +507,7 @@ window.toggleReactionPicker = function(messageId, event) {
   event.stopPropagation();
   
   // Fermer les autres pickers
-  document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
+document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
   
   const picker = document.createElement('div');
   picker.className = 'reaction-picker';
@@ -749,6 +910,17 @@ function connectSocket() {
       addMessage(msg);
     }
   });
+
+// Recevoir un MP
+  socket.on('pm_received', (msg) => {
+    console.log('📬 PM reçu:', msg); // ← Ajouter
+    // Si on est déjà en conversation avec cette personne, afficher le message
+    if (currentPMUser === msg.from) {
+      addPM(msg);
+      scrollBottom();
+    }
+  });
+
   socket.on('channel_history', msgs => { $('messages-area').innerHTML = ''; msgs.forEach(addMessage); scrollBottom(); });
   socket.on('online_users', async (usersFromServer) => {
   // Stocker les users en ligne globalement
@@ -1165,6 +1337,7 @@ function joinTextChannel(ch) {
   document.querySelectorAll('.channel-item').forEach(e => e.classList.remove('active'));
   document.getElementById('ch-' + ch.id)?.classList.add('active');
   currentChannel = ch.id;
+  currentPMUser = null;
   $('channel-name').textContent = ch.name;
   $('input-area').classList.remove('hidden');
   $('messages-area').innerHTML = '';
@@ -1326,8 +1499,35 @@ $('msg-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.prev
 
 function sendMessage() {
   const content = $('msg-input').value.trim();
-  if (!content || !currentChannel) return;
-  console.log('Envoi message, currentChannel:', currentChannel, 'content:', content); // ← DEBUG
+  if (!content) return;
+  
+  // Si en mode PM
+  if (currentPMUser) {
+    fetch(SERVER_URL + '/send-pm', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + myToken
+      },
+      body: JSON.stringify({ to: currentPMUser, content })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        console.log('Message envoyé:', data.message); // ← Ajouter
+        addPM(data.message);
+        scrollBottom();
+        socket.emit('pm_sent', { to: currentPMUser, message: data.message }); // Notifier l'autre user
+      }
+    })
+    .catch(err => console.error(err));
+    
+    $('msg-input').value = '';
+    return;
+  }
+  
+  // Sinon mode salon normal
+  if (!currentChannel) return;
   socket.emit('send_message', { channelId: currentChannel, content, type: 'text' });
   $('msg-input').value = '';
 }
@@ -1336,7 +1536,11 @@ function sendMessage() {
 let mentionIndex = -1;
 let filteredUsers = [];
 
+
 $('msg-input').addEventListener('input', (e) => {
+// Ne rien faire si pas dans un salon ou MP
+  if (!currentChannel && !currentPMUser) return;
+
   const text = e.target.value;
   const cursorPos = e.target.selectionStart;
   
@@ -1362,6 +1566,7 @@ $('msg-input').addEventListener('input', (e) => {
     hideMentionAutocomplete();
   }
 });
+
 
 function showMentionAutocomplete(users) {
   const autocomplete = $('mention-autocomplete');

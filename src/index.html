@@ -32,7 +32,7 @@
   </div>
 
   <div class="sidebar">
-    <div class="sidebar-header">ChatView v2.3.0</div>
+    <div class="sidebar-header">ChatView v2.3.1</div>
     <div class="channels-scroll">
       <div class="channel-group-title">SALONS TEXTUELS</div>
       <div id="text-channels"></div>
@@ -269,6 +269,20 @@
     <div style="padding: 20px;">
       <input type="text" id="friend-username-input" placeholder="Nom d'utilisateur" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--bg3); background: var(--bg2); color: var(--t1);">
       <button id="send-friend-request-btn" class="btn-primary" style="width: 100%; margin-top: 15px;">Envoyer la demande</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ÉDITER MP -->
+<div id="edit-pm-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Modifier le message</h2>
+      <button class="modal-close-btn" id="edit-pm-close-btn">✕</button>
+    </div>
+    <div style="padding: 20px;">
+      <textarea id="edit-pm-input" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--bg3); background: var(--bg2); color: var(--t1); min-height: 100px; font-family: inherit; resize: vertical;"></textarea>
+      <button id="save-pm-edit-btn" class="btn-primary" style="width: 100%; margin-top: 15px;">Sauvegarder</button>
     </div>
   </div>
 </div>

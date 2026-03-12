@@ -1382,3 +1382,29 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .btn-reject:hover {
   opacity: 0.8;
 }
+
+/* Statuts amis */
+.friend-item span.online {
+  color: var(--t1);
+  font-weight: 600;
+}
+
+.friend-item span.offline {
+  color: var(--t3);
+}
+
+/* Bouton MP */
+.btn-pm {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: opacity .2s;
+}
+
+.btn-pm:hover {
+  opacity: 0.8;
+}
