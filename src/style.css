@@ -1282,3 +1282,15 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .btn-primary:hover {
   opacity: 0.8;
 }
+
+/* Liens cliquables dans le chat */
+.chat-link {
+  color: #00aff4;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color .2s;
+}
+
+.chat-link:hover {
+  color: #57f287;
+}

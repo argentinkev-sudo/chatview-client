@@ -1046,6 +1046,26 @@ function formatMentions(text) {
   return text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
 }
 
+function formatLinks(text) {
+  // Regex pour détecter les URLs
+  const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/gi;
+  
+  return text.replace(urlRegex, (url) => {
+    // Ajouter https:// si c'est juste www.
+    const fullUrl = url.startsWith('www.') ? 'https://' + url : url;
+    return `<a href="#" class="chat-link" data-url="${fullUrl}">${url}</a>`;
+  });
+}
+
+// Ouvrir les liens dans le navigateur externe
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('chat-link')) {
+    e.preventDefault();
+    const url = e.target.getAttribute('data-url');
+    window.electronAPI.openExternal(url);
+  }
+});
+
 function downloadFile(url, filename) {
   fetch(url)
     .then(response => response.blob())
@@ -1093,7 +1113,7 @@ function addMessage(msg) {
     if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {
       content = `<img class="msg-image" src="${msg.content}" onclick="window.open('${msg.content}')" />`;
     } else {
-      content = `<div class="msg-content">${formatMentions(escapeHtml(msg.content))}</div>`;
+      content = `<div class="msg-content">${formatLinks(formatMentions(escapeHtml(msg.content)))}</div>`;
     }
   }
   const isOwnMessage = msg.username === myUsername;

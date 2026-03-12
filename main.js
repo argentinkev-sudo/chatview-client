@@ -1,10 +1,15 @@
-const { app, BrowserWindow, session, ipcMain, desktopCapturer } = require('electron');
+const { app, BrowserWindow, session, ipcMain, desktopCapturer, shell } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
 // Configuration auto-updater
 autoUpdater.autoDownload = true;  // Ne pas télécharger automatiquement
 autoUpdater.autoInstallOnAppQuit = true;  // Installer au redémarrage
+
+// Ouvrir les liens dans le navigateur externe
+ipcMain.handle('open-external', async (event, url) => {
+  await shell.openExternal(url);
+});
 
 function createWindow() {
   const win = new BrowserWindow({
