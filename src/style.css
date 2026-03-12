@@ -1294,3 +1294,91 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .chat-link:hover {
   color: #57f287;
 }
+
+/* Sidebar Amis */
+.friends-sidebar {
+  width: 240px;
+  background: var(--bg1);
+  display: flex;
+  flex-direction: column;
+}
+
+.friends-content {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.btn-add-friend {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity .2s;
+}
+
+.btn-add-friend:hover {
+  opacity: 0.8;
+}
+
+.friends-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.friends-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t3);
+  text-transform: uppercase;
+  padding: 8px 0;
+}
+
+/* Liste demandes et amis */
+.friend-request-item,
+.friend-item {
+  background: var(--bg2);
+  padding: 10px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.request-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-accept,
+.btn-reject {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: opacity .2s;
+}
+
+.btn-accept {
+  background: var(--green);
+  color: white;
+}
+
+.btn-reject {
+  background: var(--red);
+  color: white;
+}
+
+.btn-accept:hover,
+.btn-reject:hover {
+  opacity: 0.8;
+}

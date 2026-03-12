@@ -71,6 +71,160 @@ $('auth-submit').onclick = async () => {
   }
 };
 
+// Toggle entre ChatView et Amis
+$('chatview-btn').onclick = () => {
+  // Activer ChatView
+  $('chatview-btn').classList.add('active');
+  $('friends-btn').classList.remove('active');
+  
+  // Afficher sidebar ChatView, cacher sidebar Amis
+  document.querySelector('.sidebar').classList.remove('hidden');
+  document.querySelector('.friends-sidebar').classList.add('hidden');
+};
+
+$('friends-btn').onclick = () => {
+  // Activer Amis
+  $('friends-btn').classList.add('active');
+  $('chatview-btn').classList.remove('active');
+  
+  // Afficher sidebar Amis, cacher sidebar ChatView
+  document.querySelector('.sidebar').classList.add('hidden');
+  document.querySelector('.friends-sidebar').classList.remove('hidden');
+  loadFriends();
+};
+
+// Ajouter un ami
+document.addEventListener('DOMContentLoaded', () => {
+  const btnAddFriend = document.querySelector('.btn-add-friend');
+  if (btnAddFriend) {
+    btnAddFriend.onclick = () => {
+      $('add-friend-modal').classList.remove('hidden');
+    };
+  }
+  
+  // Fermer le modal
+  $('add-friend-close-btn').onclick = () => {
+    $('add-friend-modal').classList.add('hidden');
+    $('friend-username-input').value = '';
+  };
+  
+  // Envoyer la demande
+  $('send-friend-request-btn').onclick = () => {
+    const username = $('friend-username-input').value.trim();
+    if (!username) return alert('Entre un nom d\'utilisateur');
+    
+    fetch(SERVER_URL + '/send-friend-request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + myToken
+      },
+      body: JSON.stringify({ targetUsername: username })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        alert('Demande envoyée !');
+        $('add-friend-modal').classList.add('hidden');
+        $('friend-username-input').value = '';
+      } else {
+        alert(data.error || 'Erreur');
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Erreur lors de l\'envoi');
+    });
+  };
+});
+
+// Charger les amis et demandes
+async function loadFriends() {
+  try {
+    const res = await fetch(SERVER_URL + '/my-friends', {
+      headers: { 'Authorization': 'Bearer ' + myToken }
+    });
+    const data = await res.json();
+    
+    // Afficher demandes
+    const requestsList = $('friend-requests-list');
+    requestsList.innerHTML = '';
+    
+    data.requests.forEach(req => {
+      const div = document.createElement('div');
+      div.className = 'friend-request-item';
+      div.innerHTML = `
+        <span>${req.from}</span>
+        <div class="request-actions">
+          <button class="btn-accept" onclick="acceptFriendRequest('${req._id}')">✓</button>
+          <button class="btn-reject" onclick="rejectFriendRequest('${req._id}')">✗</button>
+        </div>
+      `;
+      requestsList.appendChild(div);
+    });
+    
+    // Afficher amis
+    const friendsList = $('friends-list');
+    friendsList.innerHTML = '';
+    
+    data.friends.forEach(friend => {
+      const div = document.createElement('div');
+      div.className = 'friend-item';
+      div.innerHTML = `
+        <span>${friend.username}</span>
+      `;
+      friendsList.appendChild(div);
+    });
+    
+  } catch (err) {
+    console.error('Erreur chargement amis:', err);
+  }
+}
+
+// Accepter une demande
+window.acceptFriendRequest = async (requestId) => {
+  try {
+    const res = await fetch(SERVER_URL + '/accept-friend-request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + myToken
+      },
+      body: JSON.stringify({ requestId })
+    });
+    
+    if (res.ok) {
+      alert('Ami ajouté !');
+      loadFriends(); // Recharger
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erreur');
+  }
+};
+
+// Refuser une demande
+window.rejectFriendRequest = async (requestId) => {
+  try {
+    const res = await fetch(SERVER_URL + '/reject-friend-request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + myToken
+      },
+      body: JSON.stringify({ requestId })
+    });
+    
+    if (res.ok) {
+      alert('Demande refusée');
+      loadFriends(); // Recharger
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erreur');
+  }
+};
+
 // PANEL ADMIN
 let isAdmin = false;
 let myRole = 'user';

@@ -27,11 +27,12 @@
 <!-- APP -->
 <div id="app" class="app hidden">
   <div class="sidebar-icons">
-    <div class="server-icon active">💭</div>
+  <div class="server-icon active" id="chatview-btn">💭</div>
+  <div class="server-icon" id="friends-btn">👨‍👨</div>
   </div>
 
   <div class="sidebar">
-    <div class="sidebar-header">ChatView v2.2.6</div>
+    <div class="sidebar-header">ChatView v2.3.0</div>
     <div class="channels-scroll">
       <div class="channel-group-title">SALONS TEXTUELS</div>
       <div id="text-channels"></div>
@@ -48,6 +49,24 @@
       </div>
       <button class="icon-btn" id="admin-btn" title="Paramètres">⚙️</button>
       <button class="icon-btn" id="logout-btn" title="Déconnexion">⏻</button>
+    </div>
+  </div>
+
+   <!-- SIDEBAR AMIS -->
+  <div class="sidebar friends-sidebar hidden">
+    <div class="sidebar-header">👥 Mes Amis</div>
+    <div class="friends-content">
+      <button class="btn-add-friend">+ Ajouter un ami</button>
+      
+      <div class="friends-section">
+        <div class="friends-section-title">🔔 Demandes en attente</div>
+        <div id="friend-requests-list"></div>
+      </div>
+      
+      <div class="friends-section">
+        <div class="friends-section-title">📋 Mes amis</div>
+        <div id="friends-list"></div>
+      </div>
     </div>
   </div>
 
@@ -236,6 +255,20 @@
         </div>
       </div>
       <button id="profile-edit-btn" class="btn-primary hidden">Modifier mon profil</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AJOUTER AMI -->
+<div id="add-friend-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Ajouter un ami</h2>
+      <button class="modal-close-btn" id="add-friend-close-btn">✕</button>
+    </div>
+    <div style="padding: 20px;">
+      <input type="text" id="friend-username-input" placeholder="Nom d'utilisateur" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--bg3); background: var(--bg2); color: var(--t1);">
+      <button id="send-friend-request-btn" class="btn-primary" style="width: 100%; margin-top: 15px;">Envoyer la demande</button>
     </div>
   </div>
 </div>
