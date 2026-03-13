@@ -1043,6 +1043,21 @@ setInterval(() => {
 socket.on('pong', () => {
   // Le serveur a bien répondu, connexion active
 });
+// Rejoin automatique si socket se reconnecte
+socket.on('reconnect', () => {
+  console.log('🔄 Socket reconnecté');
+  if (currentVoiceChannel) {
+    const savedVoiceChannel = localStorage.getItem('currentVoiceChannel');
+    if (savedVoiceChannel) {
+      try {
+        const channel = JSON.parse(savedVoiceChannel);
+        setTimeout(() => joinVoiceChannel(channel), 1000);
+      } catch (err) {
+        console.error('Erreur rejoin:', err);
+      }
+    }
+  }
+});
 }
 
 
