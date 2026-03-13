@@ -32,7 +32,7 @@
   </div>
 
   <div class="sidebar">
-    <div class="sidebar-header">ChatView v2.3.1</div>
+    <div class="sidebar-header">ChatView v2.3.2</div>
     <div class="channels-scroll">
       <div class="channel-group-title">SALONS TEXTUELS</div>
       <div id="text-channels"></div>
@@ -283,6 +283,18 @@
     <div style="padding: 20px;">
       <textarea id="edit-pm-input" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--bg3); background: var(--bg2); color: var(--t1); min-height: 100px; font-family: inherit; resize: vertical;"></textarea>
       <button id="save-pm-edit-btn" class="btn-primary" style="width: 100%; margin-top: 15px;">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMATION SUPPRESSION MP -->
+<div id="delete-pm-modal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Supprimer le message</h3>
+    <p style="color: var(--t2); margin: 16px 0;">Êtes-vous sûr de vouloir supprimer ce message ?</p>
+    <div class="modal-actions">
+      <button id="delete-pm-cancel-btn" class="modal-btn">Annuler</button>
+      <button id="delete-pm-confirm-btn" class="modal-btn primary" style="background: #ed4245;">Supprimer</button>
     </div>
   </div>
 </div>

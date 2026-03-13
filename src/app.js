@@ -355,35 +355,42 @@ window.editPM = async (messageId) => {
 
 // Supprimer un MP
 window.deletePM = async (messageId) => {
-  if (!confirm('Supprimer ce message ?')) return;
-  
-  try {
-    const res = await fetch(SERVER_URL + '/delete-pm', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + myToken
-      },
-      body: JSON.stringify({ messageId })
-    });
-    
-    if (res.ok) {
-  // Supprimer localement
-  const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
-  if (msgEl) msgEl.remove();
-  
-  // Forcer blur/focus de la fenêtre
-setTimeout(() => {
-  window.blur();
-  setTimeout(() => {
-    window.focus();
-    $('msg-input').focus();
-  }, 100);
-}, 50);
-}
-  } catch (err) {
-    console.error(err);
-  }
+  // Utiliser un modal au lieu de confirm() qui vole le focus dans Electron
+  const modal = $('delete-pm-modal');
+  const confirmBtn = $('delete-pm-confirm-btn');
+  const cancelBtn = $('delete-pm-cancel-btn');
+
+  modal.classList.remove('hidden');
+
+  confirmBtn.onclick = async () => {
+    modal.classList.add('hidden');
+
+    try {
+      const res = await fetch(SERVER_URL + '/delete-pm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + myToken
+        },
+        body: JSON.stringify({ messageId })
+      });
+
+      if (res.ok) {
+        const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+        if (msgEl) msgEl.remove();
+
+        // Simple focus sans blur/window.focus()
+        setTimeout(() => $('msg-input').focus(), 50);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  cancelBtn.onclick = () => {
+    modal.classList.add('hidden');
+    setTimeout(() => $('msg-input').focus(), 50);
+  };
 };
 
 // PANEL ADMIN
