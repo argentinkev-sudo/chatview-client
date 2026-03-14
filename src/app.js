@@ -1102,51 +1102,49 @@ async function loadChannels(retries = 3) {
 }
 
 function updateVoiceRooms(state) {
+  // ✅ Nettoyer TOUS les channel-voice-users d'abord
+  document.querySelectorAll('.channel-voice-users').forEach(el => el.remove());
+
+  // Reconstruire uniquement les salons avec des utilisateurs
   Object.entries(state).forEach(([cId, usersList]) => {
     const el = document.getElementById('ch-' + cId);
     if (!el) return;
-    let sub = el.nextElementSibling;
-    if (sub && sub.classList.contains('channel-voice-users')) sub.remove();
 
     if (usersList.length > 0) {
-  const container = document.createElement('div');
-  container.className = 'channel-voice-users';
-  
-  usersList.forEach(u => {
-    const userDiv = document.createElement('div');
-    userDiv.className = 'voice-user-item-sidebar';
-    
-    const avatarUrl = u.avatar ? (u.avatar.startsWith('http') ? u.avatar : SERVER_URL + u.avatar) : null;
-    
-    userDiv.innerHTML = `
-      <div class="voice-user-avatar-small">
-        ${avatarUrl ? `<img src="${avatarUrl}" alt="${u.username}">` : (u.username || 'U')[0].toUpperCase()}
-      </div>
-      <span class="voice-user-name">${u.username || 'Utilisateur'}</span>
-    `;
-    
-    container.appendChild(userDiv);
-  });
-  
-  el.after(container);
-}
+      const container = document.createElement('div');
+      container.className = 'channel-voice-users';
+      
+      usersList.forEach(u => {
+        const userDiv = document.createElement('div');
+        userDiv.className = 'voice-user-item-sidebar';
+        const avatarUrl = u.avatar ? (u.avatar.startsWith('http') ? u.avatar : SERVER_URL + u.avatar) : null;
+        userDiv.innerHTML = `
+          <div class="voice-user-avatar-small">
+            ${avatarUrl ? `<img src="${avatarUrl}" alt="${u.username}">` : (u.username || 'U')[0].toUpperCase()}
+          </div>
+          <span class="voice-user-name">${u.username || 'Utilisateur'}</span>
+        `;
+        container.appendChild(userDiv);
+      });
+      
+      el.after(container);
+    }
 
+    // Mettre à jour la barre vocale du bas
     if (cId === currentVoiceChannel) {
       const usersEl = $('voice-bar-users');
       usersEl.innerHTML = '';
 
-      // Ajouter ton propre utilisateur d'abord
       const myUserDiv = document.createElement('div');
       myUserDiv.className = 'voice-user-item';
       myUserDiv.innerHTML = `
-    <div class="voice-user-avatar">
-      ${myAvatar ? `<img src="${myAvatar.startsWith('http') ? myAvatar : SERVER_URL + myAvatar}" alt="${myUsername}">` : myUsername[0].toUpperCase()}
-    </div>
-    <span>${myUsername}</span>
-  `;
+        <div class="voice-user-avatar">
+          ${myAvatar ? `<img src="${myAvatar.startsWith('http') ? myAvatar : SERVER_URL + myAvatar}" alt="${myUsername}">` : myUsername[0].toUpperCase()}
+        </div>
+        <span>${myUsername}</span>
+      `;
       usersEl.appendChild(myUserDiv);
 
-      // Puis ajouter les autres utilisateurs
       usersList.forEach(user => {
         const peerEntry = Object.entries(peers).find(([id, data]) => data.username === (user.username || user));
         if (!peerEntry) return;
@@ -1160,17 +1158,18 @@ function updateVoiceRooms(state) {
         const avatar = user.avatar;
 
         userDiv.innerHTML = `
-      <div class="voice-user-avatar">
-        ${avatar ? `<img src="${avatar.startsWith('http') ? avatar : SERVER_URL + avatar}" alt="${username}">` : username[0].toUpperCase()}
-      </div>
-      <span>${username}</span>
-      <button class="voice-user-volume-btn" onclick="toggleVolumePopup('${peerId}', event)">🔊</button>
-    `;
+          <div class="voice-user-avatar">
+            ${avatar ? `<img src="${avatar.startsWith('http') ? avatar : SERVER_URL + avatar}" alt="${username}">` : username[0].toUpperCase()}
+          </div>
+          <span>${username}</span>
+          <button class="voice-user-volume-btn" onclick="toggleVolumePopup('${peerId}', event)">🔊</button>
+        `;
         usersEl.appendChild(userDiv);
       });
     }
   });
-  // Réappliquer les boutons rouges pour les utilisateurs qui stream
+
+  // Réappliquer les boutons rouges pour les streamers
   streamingUsers.forEach(username => {
     document.querySelectorAll('.voice-user-item-sidebar').forEach(item => {
       if (item.textContent.includes(username) && !item.querySelector('.stream-indicator-btn')) {
@@ -1771,17 +1770,24 @@ $('leave-voice-btn').onclick = leaveVoice;
 
 async function leaveVoice() {
   if (!currentVoiceChannel) return;
-  socket.emit('leave_voice', currentVoiceChannel);
+  
+  const channelToLeave = currentVoiceChannel; // ✅ Sauvegarder avant de nullifier
+  
+  // Nettoyer immédiatement
+  currentVoiceChannel = null;
+  localStorage.removeItem('currentVoiceChannel');
+  
+  // Envoyer au serveur avec la valeur sauvegardée
+  socket.emit('leave_voice', channelToLeave);
+  
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
   Object.keys(peers).forEach(id => { peers[id].peer.destroy(); });
   peers = {};
   $('remote-streams').innerHTML = '';
   $('remote-streams').classList.add('hidden');
   $('voice-bar').classList.add('hidden');
-  document.getElementById('ch-' + currentVoiceChannel)?.classList.remove('active');
+  document.getElementById('ch-' + channelToLeave)?.classList.remove('active');
   leaveSound.play().catch(() => { });
-  currentVoiceChannel = null;
-  localStorage.removeItem('currentVoiceChannel');
 }
 
 $('mute-btn').onclick = () => {
