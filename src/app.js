@@ -1203,28 +1203,17 @@ if (savedVolumes) {
 // Stocker les GainNodes pour chaque peer
 
 function applyVolume(peerId, volume) {
-  console.log('applyVolume appelé:', peerId, 'volume:', volume);
-  
-  // Mettre à jour via GainNode (0-200%)
-  if (window.peerGainNodes && window.peerGainNodes[peerId]) {
-    const gainValue = volume / 100; // 0 à 2.0
-    window.peerGainNodes[peerId].gain.value = gainValue;
-    console.log('Gain appliqué:', gainValue);
-  } else {
-    console.log('❌ GainNode NON TROUVÉ pour:', peerId);
-    console.log('peerGainNodes disponibles:', Object.keys(window.peerGainNodes || {}));
+  const audio = window.peerAudioElements && window.peerAudioElements[peerId];
+  if (audio) {
+    if (volume === 0) {
+      audio.muted = true;
+    } else {
+      audio.muted = false;
+      audio.volume = volume / 100; // 0.01 à 1.0
+    }
   }
-  
-  // Gérer l'élément audio
-const audio = document.querySelector(`audio[data-peer-id="${peerId}"]`);
-if (audio) {
-  if (volume === 0) {
-    audio.muted = true; // Couper complètement à 0
-  } else {
-    audio.muted = false;
-    audio.volume = 1.0; // Le gainNode s'occupe du reste
-  }
- }
+  userVolumes[peerId] = volume;
+  localStorage.setItem('userVolumes', JSON.stringify(userVolumes));
 }
 
 function toggleVolumePopup(peerId, event) {
@@ -1991,61 +1980,40 @@ box.appendChild(qualityToggle);
   stream.getVideoTracks()[0].onended = () => box.remove();
 
     } else {
-     // Audio seulement
-const audio = document.createElement('audio');
-audio.autoplay = true;
-audio.className = 'remote-audio';
-audio.srcObject = stream;
-audio.setAttribute('data-peer-id', peerId);
-if (isDeafened) audio.muted = true;
-document.body.appendChild(audio);
+      // Audio seulement
+      const audio = document.createElement('audio');
+      audio.autoplay = true;
+      audio.className = 'remote-audio';
+      audio.srcObject = stream;
+      audio.setAttribute('data-peer-id', peerId);
+      if (isDeafened) audio.muted = true;
+      document.body.appendChild(audio);
 
-// Créer GainNode pour contrôler le volume jusqu'à 200%
-const peerAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-const peerGainNode = peerAudioContext.createGain();
-const peerSource = peerAudioContext.createMediaElementSource(audio);
-const destination = peerAudioContext.destination;
+      // Stocker l'élément audio pour applyVolume()
+      if (!window.peerAudioElements) window.peerAudioElements = {};
+      window.peerAudioElements[peerId] = audio;
 
-// Appliquer le volume sauvegardé (peut aller jusqu'à 2.0 = 200%)
-const savedVolume = userVolumes[peerId] || 100;
-peerGainNode.gain.value = savedVolume / 100;
+      // Appliquer le volume sauvegardé
+      const savedVolume = userVolumes[peerId] !== undefined ? userVolumes[peerId] : 100;
+      audio.volume = savedVolume / 100;
 
-// Connecter : audio → gain → destination
-peerSource.connect(peerGainNode);
-peerGainNode.connect(destination);
+      // Analyseur audio pour détection de parole (rond vert)
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser.fftSize = 256;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      source.connect(analyser);
 
-// Stocker le GainNode pour pouvoir le modifier plus tard
-if (!window.peerGainNodes) window.peerGainNodes = {};
-window.peerGainNodes[peerId] = peerGainNode;
-      // Analyseur audio pour détection de parole
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-const analyser = audioContext.createAnalyser();
-const source = audioContext.createMediaStreamSource(stream);
-
-analyser.fftSize = 256;
-const bufferLength = analyser.frequencyBinCount;
-const dataArray = new Uint8Array(bufferLength);
-
-source.connect(analyser);
-
-// Surveiller le niveau audio
-const checkAudioLevel = () => {
-  if (!peers[peerId]) return; // Arrêter si le peer n'existe plus
-  
-  analyser.getByteFrequencyData(dataArray);
-  const average = dataArray.reduce((a, b) => a + b) / bufferLength;
-  
-  // Seuil de détection (ajustable)
-  const isSpeaking = average > 15;
-  
-  // Mettre à jour l'indicateur visuel dans la sidebar
-  updateVoiceIndicator(peerId, isSpeaking);
-  
-  requestAnimationFrame(checkAudioLevel);
-};
-
-checkAudioLevel();
-
+      const checkAudioLevel = () => {
+        if (!peers[peerId]) return;
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+        updateVoiceIndicator(peerId, average > 15);
+        requestAnimationFrame(checkAudioLevel);
+      };
+      checkAudioLevel();
     }
   });
   peer.on('error', e => console.error('Peer error:', e));
