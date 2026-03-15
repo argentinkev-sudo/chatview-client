@@ -1537,11 +1537,30 @@ function addMessage(msg) {
   `;
 
 } else {
+    // Message de bienvenue bot
+    if (msg.type === 'welcome' && msg.content.startsWith('WELCOME_CARD:')) {
+      const parts = msg.content.split(':');
+      const welcomeUsername = parts[1];
+      const welcomeAvatar = parts[2] || '';
+      const avatarContent = welcomeAvatar
+        ? `<img src="${welcomeAvatar}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;">`
+        : `<div style="width:56px;height:56px;border-radius:50%;background:#378ADD;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;color:#E6F1FB;">${welcomeUsername[0].toUpperCase()}</div>`;
+
+      content = `
+  <div style="display:flex;flex-direction:column;align-items:center;padding:24px 32px;background:#1e1f22;border:2px solid #378ADD;border-radius:16px;gap:10px;width:280px;margin:0 auto;">
+    <div style="width:80px;height:80px;border-radius:50%;border:3px solid #fff;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#378ADD;">
+      ${welcomeAvatar
+        ? `<img src="${welcomeAvatar}" style="width:100%;height:100%;object-fit:cover;">`
+        : `<span style="font-size:28px;font-weight:600;color:#fff;">${welcomeUsername[0].toUpperCase()}</span>`}
+    </div>
+    <span style="font-size:15px;color:#fff;font-weight:500;text-align:center;">${escapeHtml(welcomeUsername)} rejoint ChatView !</span>
+  </div>
+`;
     // Détection auto des URLs d'images/GIFs
-    if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {
+    } else if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {
       content = `<img class="msg-image" src="${msg.content}" onclick="window.open('${msg.content}')" />`;
     } else {
-      content = `<div class="msg-content">${formatLinks(formatMentions(escapeHtml(msg.content)))}</div>`;
+      content = `<div class="msg-content">${formatMentions(escapeHtml(msg.content))}</div>`;
     }
   }
   const isOwnMessage = msg.username === myUsername;
