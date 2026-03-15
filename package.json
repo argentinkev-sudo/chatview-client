@@ -28,8 +28,8 @@
     },
     "nsis": {
   "oneClick": true,
-  "silentInstall": true,
-  "allowToChangeInstallationDirectory": false
-  }
+  "allowToChangeInstallationDirectory": false,
+  "runAfterFinish": true
+}
  }
 }
