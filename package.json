@@ -1,6 +1,6 @@
 {
   "name": "chatapp-client",
-  "version": "2.3.6",
+  "version": "2.3.7",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -27,8 +27,9 @@
       "icon": "build/icon.ico"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
+  "oneClick": true,
+  "silentInstall": true,
+  "allowToChangeInstallationDirectory": false
   }
+ }
 }
