@@ -1453,3 +1453,39 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .delete-channel-btn:hover {
   background: var(--red);
 }
+
+/* Badge MP non lus */
+#friends-btn {
+  position: relative;
+}
+
+.friends-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Badge MP non lus sur bouton ami */
+.pm-unread-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  pointer-events: none;
+}

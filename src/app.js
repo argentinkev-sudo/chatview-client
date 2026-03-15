@@ -3,6 +3,7 @@ const SERVER_URL = 'https://chatapp-server-e97e.onrender.com';
 let socket = null, myUsername = null, myToken = null, myAvatar = null, currentPMUser = null;
 let currentChannel = null, currentVoiceChannel = null;
 let isMuted = false, isDeafened = false, isSharing = false;
+let unreadPMs = {};
 let peers = {}, localStream = null, screenStream = null;
 let streamQuality = localStorage.getItem('streamQuality') || 'hd'; // 'hd' ou 'sd'
 let streamingUsers = new Set(); // Utilisateurs qui stream actuellement
@@ -181,9 +182,18 @@ data.friends.forEach(friend => {
   const isOnline = Object.values(onlineUsers).some(u => u.username === friend.username);
   const statusClass = isOnline ? 'online' : 'offline';
   
+  // Badge MP non lus
+  const unreadCount = unreadPMs[friend.username] || 0;
+  const badgeHtml = unreadCount > 0 
+    ? `<span class="pm-unread-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` 
+    : '';
+  
   div.innerHTML = `
     <span class="${statusClass}">${friend.username}</span>
-    <button class="btn-pm" onclick="openPM('${friend.username}')">💬</button>
+    <div style="position:relative;display:inline-block;">
+      <button class="btn-pm" onclick="openPM('${friend.username}')">💬</button>
+      ${badgeHtml}
+    </div>
   `;
   friendsList.appendChild(div);
 });
@@ -274,6 +284,10 @@ window.openPM = async (friendUsername) => {
       addPM(msg);
     });
     scrollBottom();
+
+    // Réinitialiser les MP non lus de cet ami
+    unreadPMs[friendUsername] = 0;
+    updateFriendsBadge();
 
     // Mettre le focus sur l'input
     setTimeout(() => {
@@ -924,13 +938,20 @@ function connectSocket() {
 
 // Recevoir un MP
   socket.on('pm_received', (msg) => {
-    console.log('📬 PM reçu:', msg); // ← Ajouter
-    // Si on est déjà en conversation avec cette personne, afficher le message
-    if (currentPMUser === msg.from) {
-      addPM(msg);
-      scrollBottom();
-    }
-  });
+  console.log('📬 PM reçu:', msg);
+  
+  if (currentPMUser === msg.from) {
+    addPM(msg);
+    scrollBottom();
+  } else {
+    // 🔴 Badge MP non lus
+    unreadPMs[msg.from] = (unreadPMs[msg.from] || 0) + 1;
+    updateFriendsBadge();
+    
+    // 🔔 Son de notification
+    notificationSound.play().catch(() => {});
+  }
+});
 
   socket.on('channel_history', msgs => { $('messages-area').innerHTML = ''; msgs.forEach(addMessage); scrollBottom(); });
   socket.on('online_users', async (usersFromServer) => {
@@ -2024,6 +2045,23 @@ function updateChannelBadges() {
     }
   });
 }
+
+function updateFriendsBadge() {
+  const total = Object.values(unreadPMs).reduce((a, b) => a + b, 0);
+  const friendsBtn = $('friends-btn');
+  
+  // Supprimer l'ancien badge
+  const oldBadge = friendsBtn.querySelector('.friends-badge');
+  if (oldBadge) oldBadge.remove();
+  
+  if (total > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'friends-badge';
+    badge.textContent = total > 99 ? '99+' : total;
+    friendsBtn.appendChild(badge);
+  }
+}
+
 // WebRTC
 async function createPeer(peerId, initiator, username) {
   const peer = new SimplePeer({
