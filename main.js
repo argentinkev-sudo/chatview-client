@@ -48,7 +48,8 @@ autoUpdater.on('download-progress', (progress) => {
 
 autoUpdater.on('update-downloaded', () => {
   console.log('Mise à jour téléchargée, redémarrage...');
-  autoUpdater.quitAndInstall();
+  // false = ne pas forcer la fermeture, true = redémarrage silencieux
+  autoUpdater.quitAndInstall(false, true);
 });
 
 // Gérer la demande de sources d'écran
