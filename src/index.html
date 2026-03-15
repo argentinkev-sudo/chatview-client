@@ -34,11 +34,18 @@
   <div class="sidebar">
     <div class="sidebar-header">ChatView v2.3.7</div>
     <div class="channels-scroll">
-      <div class="channel-group-title">SALONS TEXTUELS</div>
-      <div id="text-channels"></div>
-      <div class="channel-group-title" style="margin-top:12px">SALONS VOCAUX</div>
-      <div id="voice-channels"></div>
-    </div>
+  <div class="channel-group-header">
+    <div class="channel-group-title">SALONS TEXTUELS</div>
+    <button class="add-channel-btn hidden" id="add-text-channel-btn" title="Ajouter un salon">+</button>
+  </div>
+  <div id="text-channels"></div>
+  
+  <div class="channel-group-header" style="margin-top:12px">
+    <div class="channel-group-title">SALONS VOCAUX</div>
+    <button class="add-channel-btn hidden" id="add-voice-channel-btn" title="Ajouter un salon">+</button>
+  </div>
+  <div id="voice-channels"></div>
+</div>
     <div class="user-bar">
       <div class="user-avatar" id="my-avatar"></div>
       <button class="avatar-change-btn" id="change-avatar-btn" title="Changer l'avatar">📷</button>
@@ -295,6 +302,18 @@
     <div class="modal-actions">
       <button id="delete-pm-cancel-btn" class="modal-btn">Annuler</button>
       <button id="delete-pm-confirm-btn" class="modal-btn primary" style="background: #ed4245;">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CRÉER SALON -->
+<div id="create-channel-modal" class="modal hidden">
+  <div class="modal-content">
+    <h3 id="create-channel-title">Créer un salon</h3>
+    <input type="text" id="create-channel-name" placeholder="Nom du salon" style="width:100%;padding:10px;border-radius:4px;border:1px solid var(--bg3);background:var(--bg2);color:var(--t1);margin-top:16px;">
+    <div class="modal-actions" style="margin-top:16px">
+      <button id="create-channel-cancel-btn" class="modal-btn">Annuler</button>
+      <button id="create-channel-confirm-btn" class="modal-btn primary">Créer</button>
     </div>
   </div>
 </div>

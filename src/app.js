@@ -412,7 +412,11 @@ async function checkAdmin() {
     myRole = me?.role || 'user';
 
     // Tout le monde voit le bouton paramètres
-$('admin-btn').classList.remove('hidden');
+    $('admin-btn').classList.remove('hidden');
+
+    // Afficher boutons + si admin
+    showAdminChannelButtons();
+
   } catch (err) {
     console.error('Erreur vérification admin:', err);
   }
@@ -1006,6 +1010,21 @@ function connectSocket() {
     if (box) box.remove();
     leaveSound.play().catch(() => { });
   });
+
+// Écouter création/suppression salon en temps réel
+socket.on('channel_created', (channel) => {
+  addChannelToSidebar(channel);
+});
+
+socket.on('channel_deleted', ({ channelId }) => {
+  const el = document.getElementById('ch-' + channelId);
+  if (el) {
+    const sub = el.nextElementSibling;
+    if (sub && sub.classList.contains('channel-voice-users')) sub.remove();
+    el.remove();
+  }
+});
+
   socket.on('reaction_updated', ({ messageId, reactions }) => {
   const msgEl = document.querySelector(`[data-msg-id="${messageId}"]`);
   if (!msgEl) return;
@@ -1071,27 +1090,14 @@ async function loadChannels(retries = 3) {
     $('text-channels').innerHTML = '';
     $('voice-channels').innerHTML = '';
     
-    data.text.forEach(ch => {
-      const el = document.createElement('div');
-      el.className = 'channel-item';
-      el.id = 'ch-' + ch.id;
-      el.innerHTML = `<span style="color:var(--t3);font-size:16px">#</span>${ch.name}`;
-      el.onclick = () => joinTextChannel(ch);
-      $('text-channels').appendChild(el);
-    });
-    
-    data.voice.forEach(ch => {
-      const el = document.createElement('div');
-      el.className = 'channel-item';
-      el.id = 'ch-' + ch.id;
-      el.innerHTML = ch.name;
-      el.onclick = () => joinVoiceChannel(ch);
-      $('voice-channels').appendChild(el);
-    });
+    data.text.forEach(ch => addChannelToSidebar(ch));
+    data.voice.forEach(ch => addChannelToSidebar(ch));
+
+    // Afficher boutons admin
+    showAdminChannelButtons();
+
   } catch (err) {
     console.error('Erreur chargement salons:', err);
-    
-    // Retry si échec et qu'il reste des tentatives
     if (retries > 0) {
       console.log(`Nouvelle tentative dans 2 secondes... (${retries} restantes)`);
       setTimeout(() => loadChannels(retries - 1), 2000);
@@ -1099,6 +1105,91 @@ async function loadChannels(retries = 3) {
       alert('Impossible de charger les salons. Le serveur est peut-être en cours de démarrage. Actualisez la page dans quelques secondes.');
     }
   }
+}
+
+function addChannelToSidebar(channel) {
+  const el = document.createElement('div');
+  el.className = 'channel-item';
+  el.id = 'ch-' + channel.id;
+
+  if (channel.type === 'text') {
+    el.innerHTML = `<span style="color:var(--t3);font-size:16px">#</span>${channel.name}`;
+    el.onclick = () => joinTextChannel(channel);
+    if (isAdmin) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'delete-channel-btn';
+      delBtn.textContent = '🗑️';
+      delBtn.title = 'Supprimer le salon';
+      delBtn.onclick = (e) => { e.stopPropagation(); deleteChannel(channel.id); };
+      el.appendChild(delBtn);
+    }
+    $('text-channels').appendChild(el);
+  } else {
+    el.innerHTML = channel.name;
+    el.onclick = () => joinVoiceChannel(channel);
+    if (isAdmin) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'delete-channel-btn';
+      delBtn.textContent = '🗑️';
+      delBtn.title = 'Supprimer le salon';
+      delBtn.onclick = (e) => { e.stopPropagation(); deleteChannel(channel.id); };
+      el.appendChild(delBtn);
+    }
+    $('voice-channels').appendChild(el);
+  }
+}
+
+function showAdminChannelButtons() {
+  if (isAdmin) {
+    $('add-text-channel-btn').classList.remove('hidden');
+    $('add-voice-channel-btn').classList.remove('hidden');
+    
+    // ✅ Assigner les onclick ici
+    $('add-text-channel-btn').onclick = () => openCreateChannelModal('text');
+    $('add-voice-channel-btn').onclick = () => openCreateChannelModal('voice');
+  }
+}
+
+function openCreateChannelModal(type) {
+  const modal = $('create-channel-modal');
+  $('create-channel-title').textContent = type === 'text' ? '➕ Créer un salon textuel' : '➕ Créer un salon vocal';
+  $('create-channel-name').value = '';
+  modal.classList.remove('hidden');
+  $('create-channel-name').focus();
+
+  $('create-channel-confirm-btn').onclick = async () => {
+    const name = $('create-channel-name').value.trim();
+    if (!name) return;
+    const res = await fetch(SERVER_URL + '/admin/create-channel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + myToken
+      },
+      body: JSON.stringify({ name, type })
+    });
+    if (res.ok) modal.classList.add('hidden');
+  };
+
+  $('create-channel-cancel-btn').onclick = () => modal.classList.add('hidden');
+}
+
+async function deleteChannel(channelId) {
+  const modal = $('delete-modal');
+  const confirmBtn = $('delete-confirm-btn');
+  const cancelBtn = $('delete-cancel-btn');
+
+  modal.classList.remove('hidden');
+
+  confirmBtn.onclick = async () => {
+    modal.classList.add('hidden');
+    await fetch(SERVER_URL + '/admin/delete-channel/' + channelId, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + myToken }
+    });
+  };
+
+  cancelBtn.onclick = () => modal.classList.add('hidden');
 }
 
 function updateVoiceRooms(state) {
