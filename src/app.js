@@ -1511,7 +1511,12 @@ document.addEventListener('click', (e) => {
   if (e.target.classList.contains('chat-link')) {
     e.preventDefault();
     const url = e.target.getAttribute('data-url');
-    window.electronAPI.openExternal(url);
+    // Essayer electronAPI d'abord, sinon window.open
+    if (window.electronAPI && window.electronAPI.openExternal) {
+      window.electronAPI.openExternal(url);
+    } else {
+      window.open(url, '_blank');
+    }
   }
 });
 
@@ -1581,7 +1586,7 @@ function addMessage(msg) {
     } else if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {
       content = `<img class="msg-image" src="${msg.content}" onclick="window.open('${msg.content}')" />`;
     } else {
-      content = `<div class="msg-content">${formatMentions(escapeHtml(msg.content))}</div>`;
+      content = `<div class="msg-content">${formatLinks(formatMentions(escapeHtml(msg.content)))}</div>`;
     }
   }
   const isOwnMessage = msg.username === myUsername;
