@@ -92,7 +92,8 @@
 </head>
 <body>
   <div class="logo-container">
-    <img class="logo" src="../build/icon.png">
+    <img class="logo" src="../../build/icon.png" onerror="this.style.display='none';document.getElementById('emoji-logo').style.display='block'">
+    <div id="emoji-logo" style="display:none;font-size:80px;animation: breathe 1.5s ease-in-out infinite;">🎧</div>
     <div class="app-name">ChatView</div>
     <div class="loading-text">Chargement...</div>
     <div class="dots">
