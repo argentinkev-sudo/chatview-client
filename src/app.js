@@ -1847,8 +1847,11 @@ async function joinVoiceChannel(ch) {
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
-        noiseSuppression: noiseReductionEnabled,
-        autoGainControl: true
+        noiseSuppression: true, // Toujours actif
+        autoGainControl: true,
+        googNoiseSuppression: true,
+        googHighpassFilter: true,
+        googEchoCancellation: true
       },
       video: false
     });
@@ -1879,8 +1882,19 @@ const bufferLength = analyser.frequencyBinCount;
 const dataArray = new Uint8Array(bufferLength);
 
 
-// Connecter : source → gain → analyser
+// Créer une destination MediaStream pour envoyer le son traité aux peers
+const micDestination = audioContextInstance.createMediaStreamDestination();
+
+// Connecter : source → gain → destination WebRTC
 source.connect(micGainNode);
+micGainNode.connect(micDestination);
+
+// Remplacer le localStream par le stream traité pour WebRTC
+const processedStream = micDestination.stream;
+// Ajouter la piste audio traitée au localStream
+const originalTrack = localStream.getAudioTracks()[0];
+localStream.removeTrack(originalTrack);
+localStream.addTrack(processedStream.getAudioTracks()[0]);
 
 // Créer les filtres audio
 const compressor = audioContextInstance.createDynamicsCompressor();
@@ -1937,7 +1951,7 @@ const checkMyAudioLevel = () => {
   
   // Gate de bruit : couper le micro si niveau trop bas
 if (noiseGateEnabled && window.audioFilters && window.audioFilters.gateGainNode) {
-  const threshold = 15;
+  const threshold = noiseReductionEnabled ? 30 : 15;
   if (average < threshold) {
     window.audioFilters.gateGainNode.gain.value = 0; // Couper
   } else {
