@@ -1321,7 +1321,7 @@ function applyVolume(peerId, volume) {
       audio.muted = true;
     } else {
       audio.muted = false;
-      audio.volume = volume / 100; // 0.01 à 1.0
+      audio.volume = Math.min(volume / 100, 1.0);
     }
   }
   userVolumes[peerId] = volume;
@@ -1924,7 +1924,19 @@ $('mute-btn').onclick = () => {
 
 $('deafen-btn').onclick = () => {
   isDeafened = !isDeafened;
-  document.querySelectorAll('.remote-audio').forEach(a => a.muted = isDeafened);
+  
+  Object.keys(peers).forEach(peerId => {
+    if (window.peerGainNodes && window.peerGainNodes[peerId] && window.peerAudioContexts[peerId]) {
+      if (isDeafened) {
+        window.peerGainNodes[peerId].gain.setTargetAtTime(0, window.peerAudioContexts[peerId].currentTime, 0.01);
+      } else {
+        const vol = userVolumes[peerId] !== undefined ? userVolumes[peerId] : 100;
+        const gainValue = vol <= 100 ? vol / 100 : 1 + ((vol - 100) / 100 * 1.5);
+        window.peerGainNodes[peerId].gain.setTargetAtTime(gainValue, window.peerAudioContexts[peerId].currentTime, 0.01);
+      }
+    }
+  });
+
   $('deafen-btn').textContent = isDeafened ? '🔕' : '🔊';
   $('deafen-btn').classList.toggle('active', isDeafened);
 };
@@ -2133,31 +2145,32 @@ box.appendChild(qualityToggle);
   stream.getVideoTracks()[0].onended = () => box.remove();
 
     } else {
-      // Audio seulement
+      // Audio seulement - élément audio pour la sortie + GainNode pour le volume
       const audio = document.createElement('audio');
       audio.autoplay = true;
       audio.className = 'remote-audio';
-      audio.srcObject = stream;
       audio.setAttribute('data-peer-id', peerId);
       if (isDeafened) audio.muted = true;
       document.body.appendChild(audio);
+      audio.srcObject = stream;
 
-      // Stocker l'élément audio pour applyVolume()
+      // Stocker l'élément audio
       if (!window.peerAudioElements) window.peerAudioElements = {};
       window.peerAudioElements[peerId] = audio;
 
-      // Appliquer le volume sauvegardé
+      // Appliquer le volume sauvegardé (0-100% via audio.volume)
       const savedVolume = userVolumes[peerId] !== undefined ? userVolumes[peerId] : 100;
-      audio.volume = savedVolume / 100;
+      audio.volume = Math.min(savedVolume / 100, 1.0);
 
-      // Analyseur audio pour détection de parole (rond vert)
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const analyser = audioContext.createAnalyser();
-      const source = audioContext.createMediaStreamSource(stream);
+      // Analyser pour le rond vert
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
-      source.connect(analyser);
 
       const checkAudioLevel = () => {
         if (!peers[peerId]) return;
