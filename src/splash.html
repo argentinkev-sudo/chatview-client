@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: #1e1f22;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+      border-radius: 16px;
+    }
+
+    .logo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .logo {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      animation: breathe 1.5s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% {
+        transform: scale(1);
+        filter: brightness(1);
+      }
+      50% {
+        transform: scale(1.1);
+        filter: brightness(1.2);
+      }
+    }
+
+    .app-name {
+      font-size: 24px;
+      font-weight: 700;
+      color: #f2f3f5;
+      letter-spacing: 1px;
+    }
+
+    .loading-text {
+      font-size: 13px;
+      color: #80848e;
+      animation: fade 1.5s ease-in-out infinite;
+    }
+
+    @keyframes fade {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    .dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #5865f2;
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); opacity: 0.4; }
+      50% { transform: translateY(-6px); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <img class="logo" src="../build/icon.ico" onerror="this.style.display='none';document.getElementById('emoji-logo').style.display='block'">
+    <div id="emoji-logo" style="display:none;font-size:64px;">💬</div>
+    <div class="app-name">ChatView</div>
+    <div class="loading-text">Chargement...</div>
+    <div class="dots">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+  </div>
+</body>
+</html>

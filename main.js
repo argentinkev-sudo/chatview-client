@@ -3,16 +3,37 @@ const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
 // Configuration auto-updater
-autoUpdater.autoDownload = true;  // Ne pas télécharger automatiquement
-autoUpdater.autoInstallOnAppQuit = true;  // Installer au redémarrage
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+let splashWindow = null;
+let mainWindow = null;
 
 // Ouvrir les liens dans le navigateur externe
 ipcMain.handle('open-external', async (event, url) => {
   await shell.openExternal(url);
 });
 
+function createSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width: 300,
+    height: 350,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  splashWindow.loadFile('src/splash.html');
+}
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
@@ -21,21 +42,29 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      partition: 'persist:main' // ✅ Garder la session persistante
     },
     backgroundColor: '#1e1f22',
     show: false
   });
 
-  win.loadFile('src/index.html');
-  win.once('ready-to-show', () => win.show());
+  mainWindow.loadFile('src/index.html');
+  
+  mainWindow.once('ready-to-show', () => {
+    setTimeout(() => {
+      if (splashWindow) {
+        splashWindow.close();
+        splashWindow = null;
+      }
+      mainWindow.show();
+    }, 1500);
+  });
 }
-
 
 // Événements auto-updater
 autoUpdater.on('update-available', (info) => {
   console.log('Mise à jour disponible:', info.version);
-  // TODO: Afficher une notification à l'utilisateur
 });
 
 autoUpdater.on('update-not-available', () => {
@@ -48,7 +77,6 @@ autoUpdater.on('download-progress', (progress) => {
 
 autoUpdater.on('update-downloaded', () => {
   console.log('Mise à jour téléchargée, redémarrage...');
-  // false = ne pas forcer la fermeture, true = redémarrage silencieux
   autoUpdater.quitAndInstall(false, true);
 });
 
@@ -66,9 +94,10 @@ app.on('ready', () => {
     if (['media', 'microphone', 'camera', 'desktopCapture'].includes(permission)) return callback(true);
     callback(false);
   });
+
+  createSplashWindow();
   createWindow();
   
-  // Vérifier les updates 5 secondes après le lancement
   setTimeout(() => {
     autoUpdater.checkForUpdates();
   }, 5000);
