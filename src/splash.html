@@ -6,16 +6,22 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
-      background: #1e1f22;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      font-family: 'Segoe UI', sans-serif;
-      overflow: hidden;
-      border-radius: 16px;
-    }
+  background: #1e1f22;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  overflow: hidden;
+  border-radius: 16px;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
     .logo-container {
       display: flex;
@@ -86,8 +92,7 @@
 </head>
 <body>
   <div class="logo-container">
-    <img class="logo" src="../build/icon.ico" onerror="this.style.display='none';document.getElementById('emoji-logo').style.display='block'">
-    <div id="emoji-logo" style="display:none;font-size:64px;">💬</div>
+    <img class="logo" src="../build/icon.png">
     <div class="app-name">ChatView</div>
     <div class="loading-text">Chargement...</div>
     <div class="dots">

@@ -23,6 +23,7 @@ function createSplashWindow() {
     resizable: false,
     center: true,
     alwaysOnTop: true,
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true
@@ -30,6 +31,10 @@ function createSplashWindow() {
   });
 
   splashWindow.loadFile('src/splash.html');
+  
+  splashWindow.once('ready-to-show', () => {
+    splashWindow.show();
+  });
 }
 
 function createWindow() {
@@ -51,16 +56,16 @@ function createWindow() {
 
   mainWindow.loadFile('src/index.html');
   
-  mainWindow.once('ready-to-show', () => {
+  mainWindow.webContents.once('did-finish-load', () => {
     setTimeout(() => {
       if (splashWindow) {
         splashWindow.close();
         splashWindow = null;
       }
       mainWindow.show();
-    }, 1500);
+    }, 3000); // ← 3 secondes au lieu de 1.5
   });
-}
+  }
 
 // Événements auto-updater
 autoUpdater.on('update-available', (info) => {
