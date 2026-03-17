@@ -1575,7 +1575,6 @@ document.addEventListener('click', (e) => {
   if (e.target.classList.contains('chat-link')) {
     e.preventDefault();
     const url = e.target.getAttribute('data-url');
-    // Essayer electronAPI d'abord, sinon window.open
     if (window.electronAPI && window.electronAPI.openExternal) {
       window.electronAPI.openExternal(url);
     } else {
@@ -1583,6 +1582,36 @@ document.addEventListener('click', (e) => {
     }
   }
 });
+
+async function fetchLinkPreview(url, container) {
+  try {
+    const res = await fetch(`${SERVER_URL}/fetch-preview?url=${encodeURIComponent(url)}`);
+    if (!res.ok) return;
+    
+    const data = await res.json();
+    if (!data.title && !data.image) return;
+
+    const preview = document.createElement('div');
+    preview.className = 'link-preview';
+    preview.onclick = () => {
+      if (window.electronAPI) window.electronAPI.openExternal(url);
+      else window.open(url, '_blank');
+    };
+
+    preview.innerHTML = `
+      ${data.image ? `<img class="link-preview-image" src="${data.image}" onerror="this.style.display='none'">` : ''}
+      <div class="link-preview-content">
+        ${data.siteName ? `<div class="link-preview-site">${data.siteName}</div>` : ''}
+        ${data.title ? `<div class="link-preview-title">${data.title}</div>` : ''}
+        ${data.description ? `<div class="link-preview-desc">${data.description}</div>` : ''}
+      </div>
+    `;
+
+    container.appendChild(preview);
+  } catch (err) {
+    console.error('Erreur preview:', err);
+  }
+}
 
 function downloadFile(url, filename) {
   fetch(url)
@@ -1650,7 +1679,7 @@ function addMessage(msg) {
     } else if (msg.content && (msg.content.includes('.gif') || msg.content.includes('tenor.com') || msg.content.includes('.jpg') || msg.content.includes('.png'))) {
       content = `<img class="msg-image" src="${msg.content}" onclick="window.open('${msg.content}')" />`;
     } else {
-      content = `<div class="msg-content">${formatLinks(formatMentions(escapeHtml(msg.content)))}</div>`;
+      content = `<div class="msg-content" data-raw-content="${escapeHtml(msg.content)}">${formatLinks(formatMentions(escapeHtml(msg.content)))}</div>`;
     }
   }
   const isOwnMessage = msg.username === myUsername;
@@ -1690,6 +1719,17 @@ function addMessage(msg) {
 `;
   $('messages-area').appendChild(div);
   scrollBottom();
+
+  // Générer preview si lien détecté
+  if (msg.content) {
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const urls = msg.content.match(urlRegex);
+    if (urls && urls.length > 0) {
+      const msgBody = div.querySelector('.msg-body');
+      if (msgBody) fetchLinkPreview(urls[0], msgBody);
+    }
+  }
+
   // Détecter si je suis mentionné
 if (msg.content && msg.content.includes('@' + myUsername) && msg.username !== myUsername) {
   mentionSound.play().catch(() => {});
