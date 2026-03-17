@@ -1489,3 +1489,38 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
   text-align: center;
   pointer-events: none;
 }
+
+/* Menu contextuel déplacer utilisateur */
+.move-user-menu {
+  position: fixed;
+  background: var(--bg2);
+  border: 1px solid var(--bg4);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 9999;
+  min-width: 180px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.move-user-menu-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t3);
+  text-transform: uppercase;
+  padding: 6px 10px;
+  letter-spacing: 0.8px;
+}
+
+.move-user-menu-item {
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--t2);
+  transition: all .15s;
+}
+
+.move-user-menu-item:hover {
+  background: var(--accent);
+  color: #fff;
+}

@@ -1083,6 +1083,25 @@ setInterval(() => {
 socket.on('pong', () => {
   // Le serveur a bien répondu, connexion active
 });
+// Recevoir ordre de déplacement (admin)
+socket.on('force_move_voice', async ({ fromChannelId, toChannelId }) => {
+  console.log(`🔀 Déplacement forcé vers: ${toChannelId}`);
+  
+  // Quitter le salon actuel
+  if (fromChannelId) {
+    await leaveVoice();
+  }
+  
+  // Rejoindre le nouveau salon
+  const channels = await fetch(SERVER_URL + '/channels').then(r => r.json());
+  const allChannels = [...channels.voice];
+  const targetChannel = allChannels.find(ch => ch.id === toChannelId);
+  
+  if (targetChannel) {
+    setTimeout(() => joinVoiceChannel(targetChannel), 500);
+  }
+});
+
 // Rejoin automatique si socket se reconnecte
 socket.on('reconnect', () => {
   console.log('🔄 Socket reconnecté');
@@ -1236,6 +1255,15 @@ function updateVoiceRooms(state) {
           </div>
           <span class="voice-user-name">${u.username || 'Utilisateur'}</span>
         `;
+
+        // Menu clic droit admin only
+        if (isAdmin && u.username !== myUsername) {
+          userDiv.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showMoveUserMenu(e, u.username);
+          });
+        }
+
         container.appendChild(userDiv);
       });
       
@@ -1293,7 +1321,43 @@ function updateVoiceRooms(state) {
         item.appendChild(streamBtn);
       }
     });
+ });
+}
+
+async function showMoveUserMenu(event, targetUsername) {
+  // Supprimer menu existant
+  document.querySelectorAll('.move-user-menu').forEach(m => m.remove());
+
+  // Récupérer les salons vocaux
+  const data = await fetch(SERVER_URL + '/channels').then(r => r.json());
+  
+  const menu = document.createElement('div');
+  menu.className = 'move-user-menu';
+  menu.innerHTML = `<div class="move-user-menu-title">🔀 Déplacer vers...</div>`;
+
+  data.voice.forEach(ch => {
+    const item = document.createElement('div');
+    item.className = 'move-user-menu-item';
+    item.textContent = ch.name;
+    item.onclick = () => {
+      socket.emit('move_user_to_voice', { targetUsername, targetChannelId: ch.id });
+      menu.remove();
+    };
+    menu.appendChild(item);
   });
+
+  menu.style.left = event.clientX + 'px';
+  menu.style.top = event.clientY + 'px';
+  document.body.appendChild(menu);
+
+  setTimeout(() => {
+    document.addEventListener('click', function closeMenu(e) {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    });
+  }, 10);
 }
 
 // Rafraîchissement automatique des salons vocaux toutes les 30 secondes
