@@ -32,7 +32,7 @@
   </div>
 
   <div class="sidebar">
-    <div class="sidebar-header">ChatView v2.5.0</div>
+    <div class="sidebar-header" style="text-decoration: underline; text-align: center;">ChatView v2.5.1</div>
     <div class="channels-scroll">
   <div class="channel-group-header">
     <div class="channel-group-title">SALONS TEXTUELS</div>
@@ -79,9 +79,12 @@
 
   <div class="main">
     <div class="main-header">
-      <span id="channel-name">Sélectionne un salon</span>
-      <button class="icon-btn" id="members-btn">👥</button>
-    </div>
+  <div style="min-width: 40px;"></div>
+  <div style="background: var(--bg4); border-radius: 8px; padding: 6px 20px; flex: 1; text-align: center;">
+  <span id="channel-name">Sélectionne un salon</span>
+</div>
+  <button class="icon-btn" id="members-btn" style="min-width: 40px;">👥</button>
+</div>
     <div id="messages-area" class="messages-area"></div>
     <div id="voice-bar" class="voice-bar hidden">
       <div class="voice-bar-info">
@@ -123,9 +126,9 @@
   </div>
 
   <div class="members-panel" id="members-panel">
-    <div class="members-title">UTILISATEURS</div>
-    <div id="members-list"></div>
-  </div>
+  <div class="members-title" style="padding-top: 6px; text-align: center; text-decoration: underline;">Utilisateurs</div>
+  <div id="members-list"></div>
+</div>
 </div>
 
 <div id="remote-streams" class="remote-streams hidden"></div>

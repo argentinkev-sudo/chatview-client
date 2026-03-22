@@ -25,12 +25,12 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 
 /* LAYOUT */
 .app { display: flex; height: 100vh; }
-.sidebar-icons { width: 72px; background: var(--bg1); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 8px; flex-shrink: 0; }
+.sidebar-icons { width: 72px; background: var(--bg3); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 8px; flex-shrink: 0; }
 .server-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--bg2); display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; transition: border-radius .2s, background .2s; }
 .server-icon.active { border-radius: 16px; background: var(--accent); }
 
 /* SIDEBAR */
-.sidebar { width: 240px; background: var(--bg2); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar { width: 240px; background: var(--bg1); display: flex; flex-direction: column; flex-shrink: 0; }
 .sidebar-header { padding: 18px; font-weight: 700; font-size: 15px; border-bottom: 2px solid var(--bg1); }
 .channels-scroll { flex: 1; overflow-y: auto; padding: 8px; }
 .channels-scroll::-webkit-scrollbar { width: 4px; }
@@ -101,7 +101,7 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
   font-size: 12px;
   color: var(--green);
 }
-.user-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg1); }
+.user-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg3); border-radius: 12px; margin: 8px; }
 .user-avatar { 
   width: 40px; 
   height: 40px; 
@@ -133,9 +133,9 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .icon-btn:hover { color: var(--t1); }
 
 /* MAIN */
-.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.main-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 2px solid var(--bg1); font-weight: 600; font-size: 16px; flex-shrink: 0; }
-.messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 2px; }
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg3); }
+.main-header { display: flex; align-items: center; justify-content: center; padding: 12px 20px; border-bottom: 2px solid var(--bg1); font-weight: 600; font-size: 16px; flex-shrink: 0; background: var(--bg3); }
+.messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 2px; margin: 8px 8px 4px 8px; }
 .messages-area::-webkit-scrollbar { width: 6px; }
 .messages-area::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
 .message { display: flex; gap: 12px; padding: 4px 8px; border-radius: 4px; transition: background .1s; position: relative; }
@@ -179,7 +179,7 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .voice-btn.danger:hover { background: #c0323a; }
 
 /* INPUT */
-.input-area { display: flex; align-items: center; gap: 8px; margin: 0 16px 16px; background: var(--bg4); border-radius: 8px; padding: 4px 8px; }
+.input-area { display: flex; align-items: center; gap: 8px; margin: 0 16px 10px; background: var(--bg1); border-radius: 8px; padding: 4px 8px; }
 .attach-btn { font-size: 20px; cursor: pointer; color: var(--t3); padding: 4px; border-radius: 4px; user-select: none; }
 .attach-btn:hover { color: var(--t1); }
 .input-area input { flex: 1; background: none; border: none; outline: none; color: var(--t1); font-size: 14px; padding: 8px 4px; }
@@ -188,8 +188,8 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg3); color: var(-
 .input-area button:hover { background: var(--accent2); }
 
 /* MEMBERS */
-.members-panel { width: 220px; background: var(--bg2); padding: 16px 8px; overflow-y: auto; flex-shrink: 0; }
-.members-title { font-size: 11px; font-weight: 600; color: var(--t1); text-transform: uppercase; letter-spacing: .8px; padding: 0 8px 8px; }
+.members-panel { width: 220px; background: var(--bg1); padding: 16px 8px; overflow-y: auto; flex-shrink: 0; }
+.members-title { font-size: 15px; font-weight: 700; color: var(--t1); padding: 0 8px 8px; letter-spacing: 0; text-transform: none; }
 .member-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 14px; color: var(--t2); transition: background .15s; cursor: pointer; }
 .member-item:hover { background: var(--bg4); color: var(--t1); }
 .member-avatar { 

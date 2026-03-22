@@ -48,7 +48,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      partition: 'persist:main' // ✅ Garder la session persistante
+      partition: 'persist:main'
     },
     backgroundColor: '#1e1f22',
     show: false
