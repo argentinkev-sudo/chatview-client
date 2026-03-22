@@ -984,9 +984,10 @@ function connectSocket() {
         const el = document.createElement('div');
         el.className = 'member-item';
         const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
-        el.innerHTML = `
-        <div class="member-avatar">
+       el.innerHTML = `
+        <div class="member-avatar" style="position: relative;">
           ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
+          <div style="position: absolute; bottom: 0; right: 0; width: 13px; height: 13px; background: var(--green); border-radius: 50%; border: 2px solid var(--bg1);"></div>
         </div>
         <span class="username-role role-${user.role || 'user'}">${user.username}</span>
       `;
@@ -1007,8 +1008,9 @@ function connectSocket() {
         el.className = 'member-item offline';
         const avatarUrl = user.avatar ? (user.avatar.startsWith('http') ? user.avatar : SERVER_URL + user.avatar) : null;
         el.innerHTML = `
-        <div class="member-avatar">
+        <div class="member-avatar" style="position: relative;">
           ${avatarUrl ? `<img src="${avatarUrl}" alt="${user.username}">` : user.username[0].toUpperCase()}
+          <div style="position: absolute; bottom: 0; right: 0; width: 13px; height: 13px; background: var(--t2); border-radius: 50%; border: 2px solid var(--bg1);"></div>
         </div>
         <span>${user.username}</span>
       `;
