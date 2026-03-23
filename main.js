@@ -76,7 +76,7 @@ mainWindow.on('close', (event) => {
   }
 
   function createTray() {
-  tray = new Tray(path.join(__dirname, 'build/icon.png'));
+  tray = new Tray(path.join(process.resourcesPath, 'icon.png'));
   
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Ouvrir ChatView', click: () => { mainWindow.show(); } },
