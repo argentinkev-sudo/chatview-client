@@ -1,6 +1,7 @@
-const { app, BrowserWindow, session, ipcMain, desktopCapturer, shell } = require('electron');
+const { app, BrowserWindow, session, ipcMain, desktopCapturer, shell, Tray, Menu } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
+
 
 // Configuration auto-updater
 autoUpdater.autoDownload = true;
@@ -8,6 +9,7 @@ autoUpdater.autoInstallOnAppQuit = true;
 
 let splashWindow = null;
 let mainWindow = null;
+let tray = null;
 
 // Ouvrir les liens dans le navigateur externe
 ipcMain.handle('open-external', async (event, url) => {
@@ -55,6 +57,12 @@ function createWindow() {
   });
 
   mainWindow.loadFile('src/index.html');
+
+  // Intercepter le clic sur X
+mainWindow.on('close', (event) => {
+  event.preventDefault();
+  mainWindow.hide();
+});
   
   mainWindow.webContents.once('did-finish-load', () => {
     setTimeout(() => {
@@ -66,6 +74,23 @@ function createWindow() {
     }, 3000); // ← 3 secondes au lieu de 1.5
   });
   }
+
+  function createTray() {
+  tray = new Tray(path.join(__dirname, 'build/icon.png'));
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Ouvrir ChatView', click: () => { mainWindow.show(); } },
+    { type: 'separator' },
+    { label: 'Quitter', click: () => { app.exit(); } }
+  ]);
+
+  tray.setToolTip('ChatView');
+  tray.setContextMenu(contextMenu);
+  
+  tray.on('double-click', () => {
+    mainWindow.show();
+  });
+}
 
 // Événements auto-updater
 autoUpdater.on('update-available', (info) => {
@@ -102,6 +127,7 @@ app.on('ready', () => {
 
   createSplashWindow();
   createWindow();
+  createTray();
   
   setTimeout(() => {
     autoUpdater.checkForUpdates();
@@ -109,5 +135,5 @@ app.on('ready', () => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  // Ne rien faire, géré par le tray
 });
