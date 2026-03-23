@@ -2,8 +2,6 @@ const { app, BrowserWindow, session, ipcMain, desktopCapturer, shell, Tray, Menu
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
-
-// Configuration auto-updater
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
@@ -11,7 +9,6 @@ let splashWindow = null;
 let mainWindow = null;
 let tray = null;
 
-// Ouvrir les liens dans le navigateur externe
 ipcMain.handle('open-external', async (event, url) => {
   await shell.openExternal(url);
 });
@@ -31,9 +28,7 @@ function createSplashWindow() {
       contextIsolation: true
     }
   });
-
   splashWindow.loadFile('src/splash.html');
-  
   splashWindow.once('ready-to-show', () => {
     splashWindow.show();
   });
@@ -58,14 +53,13 @@ function createWindow() {
 
   mainWindow.loadFile('src/index.html');
 
-  // Intercepter le clic sur X
-mainWindow.on('close', (event) => {
-  if (!app.isQuitting) {
-    event.preventDefault();
-    mainWindow.hide();
-  }
-});
-  
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
   mainWindow.webContents.once('did-finish-load', () => {
     setTimeout(() => {
       if (splashWindow) {
@@ -73,28 +67,31 @@ mainWindow.on('close', (event) => {
         splashWindow = null;
       }
       mainWindow.show();
-    }, 3000); // ← 3 secondes au lieu de 1.5
+    }, 3000);
   });
-  }
+}
 
-  function createTray() {
-  tray = new Tray(path.join(process.resourcesPath, 'icon.png'));
-  
+function createTray() {
+  const iconPath = app.isPackaged 
+    ? path.join(process.resourcesPath, 'icon.png')
+    : path.join(__dirname, 'build/icon.png');
+
+  tray = new Tray(iconPath);
+
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Ouvrir ChatView', click: () => { mainWindow.show(); } },
     { type: 'separator' },
-    { label: 'Quitter', click: () => { app.exit(); } }
+    { label: 'Quitter', click: () => { app.isQuitting = true; app.quit(); } }
   ]);
 
   tray.setToolTip('ChatView');
   tray.setContextMenu(contextMenu);
-  
+
   tray.on('double-click', () => {
     mainWindow.show();
   });
 }
 
-// Événements auto-updater
 autoUpdater.on('update-available', (info) => {
   console.log('Mise à jour disponible:', info.version);
 });
@@ -113,7 +110,6 @@ autoUpdater.on('update-downloaded', () => {
   autoUpdater.quitAndInstall(false, true);
 });
 
-// Gérer la demande de sources d'écran
 ipcMain.handle('get-desktop-sources', async () => {
   const sources = await desktopCapturer.getSources({ 
     types: ['screen', 'window'],
@@ -131,7 +127,7 @@ app.on('ready', () => {
   createSplashWindow();
   createWindow();
   createTray();
-  
+
   setTimeout(() => {
     autoUpdater.checkForUpdates();
   }, 5000);
