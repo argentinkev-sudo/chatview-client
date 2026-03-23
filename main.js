@@ -135,5 +135,8 @@ app.on('ready', () => {
 });
 
 app.on('window-all-closed', () => {
-  // Ne rien faire, géré par le tray
+  if (process.platform !== 'darwin') {
+    if (tray) tray.destroy();
+    app.quit();
+  }
 });
