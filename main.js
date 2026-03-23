@@ -60,8 +60,10 @@ function createWindow() {
 
   // Intercepter le clic sur X
 mainWindow.on('close', (event) => {
-  event.preventDefault();
-  mainWindow.hide();
+  if (!app.isQuitting) {
+    event.preventDefault();
+    mainWindow.hide();
+  }
 });
   
   mainWindow.webContents.once('did-finish-load', () => {
@@ -107,6 +109,7 @@ autoUpdater.on('download-progress', (progress) => {
 
 autoUpdater.on('update-downloaded', () => {
   console.log('Mise à jour téléchargée, redémarrage...');
+  app.isQuitting = true;
   autoUpdater.quitAndInstall(false, true);
 });
 
