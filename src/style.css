@@ -184,7 +184,7 @@ body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 
 .attach-btn:hover { color: var(--t1); }
 .input-area input { flex: 1; background: none; border: none; outline: none; color: var(--t1); font-size: 14px; padding: 8px 4px; }
 .input-area input::placeholder { color: var(--t3); }
-.input-area button { background: var(--accent); border: none; border-radius: 6px; color: #fff; padding: 8px 14px; cursor: pointer; font-size: 16px; transition: background .15s; }
+.input-area button { background: var(--bg4); border: none; border-radius: 6px; color: #fff; padding: 8px 14px; cursor: pointer; font-size: 16px; transition: background .15s; }
 .input-area button:hover { background: var(--accent2); }
 
 /* MEMBERS */
